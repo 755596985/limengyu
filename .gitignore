@@ -1,0 +1,36 @@
+# 测试/调试文件
+dbtest.php
+debug.php
+manage_new.php
+test_create.php
+
+# 运行时数据文件（含用户数据/密码哈希）
+data/admin_pass.php
+data/about.php
+data/comments.php
+data/config.php
+data/pages.php
+data/photos.php
+data/places.php
+data/posts.php
+data/todos.php
+data/users.php
+data/visit.php
+data/visitors.php
+data/test_upload.txt
+
+# 用户上传内容
+uploads/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
