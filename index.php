@@ -32,7 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'logout')
     exit;
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'comment') {
-    if (!$me) {
+    if (!($C['show_comments'] ?? 1)) {
+        $commentErr = '评论功能已关闭';
+    } elseif (!$me) {
         $commentErr = '请先登录后再评论';
     } else {
         $postId = trim($_POST['post_id'] ?? '');
@@ -60,6 +62,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'comment'
                 $commentData['parent_id'] = $parentId;
             }
             comment_insert($commentData);
+            header('Location: index.php?p=posts&cmt=1');
+            exit;
+        }
+    }
+}
+// 编辑留言
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'edit_comment') {
+    if (!$me) {
+        $commentErr = '请先登录';
+    } else {
+        $cid = trim($_POST['comment_id'] ?? '');
+        $text = trim($_POST['text'] ?? '');
+        $text = filter_text($text);
+        if (empty($cid) || empty($text)) {
+            $commentErr = '参数错误';
+        } elseif (mb_strlen($text) > 500) {
+            $commentErr = '留言过长（最多500字）';
+        } else {
+            comment_update($cid, $text);
+            header('Location: index.php?p=posts&cmt=1');
+            exit;
+        }
+    }
+}
+// 删除留言
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'delete_comment') {
+    if (!$me) {
+        $commentErr = '请先登录';
+    } else {
+        $cid = trim($_POST['comment_id'] ?? '');
+        if (empty($cid)) {
+            $commentErr = '参数错误';
+        } else {
+            comment_delete_by_id($cid);
             header('Location: index.php?p=posts&cmt=1');
             exit;
         }
@@ -108,6 +144,14 @@ $PG = pages_all();
 $CM = comments_all();
 $V = bump_visit();
 
+// 预计算当前用户对所有评论的点赞状态
+$allCommentIds = [];
+foreach ($CM as $c) { if (!empty($c['id'])) $allCommentIds[] = $c['id']; }
+$likedComments = [];
+if ($me && !empty($allCommentIds)) {
+    $likedComments = comment_likes_status($allCommentIds, $me['id']);
+}
+
 
 
 $n1 = $C['name1'] ?? '男神';
@@ -152,7 +196,89 @@ function NI($pg, $cur, $i) {
 }
 $DN = count(array_filter($T, function($t){return !empty($t['done']);}));
 
-function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me) {
+function renderCommentItem($ct, $pid, $parentId, $likedComments, $me) {
+    $cid = $ct['id'];
+    $likeType = $likedComments[$cid] ?? null;
+    $likeCount = (int)($ct['likes'] ?? 0);
+    $likeCls = $likeType === 'like' ? 'liked' : '';
+    $dislikeCls = $likeType === 'dislike' ? 'liked' : '';
+
+    // 头像
+    $cAv = $ct['user_avatar'] ?? '';
+    $cColor = $ct['user_avatar_color'] ?? '#d4786e';
+    $cEmoji = '👤';
+    $avatarHtml = $cAv
+        ? '<img src="'.htmlspecialchars($cAv).'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+        : htmlspecialchars($cEmoji);
+
+    // 名称+徽标
+    $badgeHtml = '';
+    if ($ct['user_id'] === 'admin') {
+        $badgeHtml = ' <span class="cmt-badge admin">管理员</span>';
+    } elseif (!empty($ct['user_id'])) {
+        $badgeHtml = '';
+    } else {
+        $badgeHtml = ' <span class="cmt-badge guest">游客</span>';
+    }
+
+    // 位置
+    $loc = !empty($ct['user_location']) && $ct['user_location'] !== '未知' ? htmlspecialchars($ct['user_location']) : '';
+
+    $o = '<div class="cmt-item" id="cmt-'.htmlspecialchars($cid).'">';
+    // 头像可点击跳转主页
+    $avatarLink = (!empty($ct['user_id']) && $ct['user_id'] !== 'admin');
+    if ($avatarLink) {
+        $o .= '<a href="user.php?id='.htmlspecialchars($ct['user_id']).'" class="cmt-avatar-link">';
+    }
+    $o .= '<div class="cmt-avatar" style="background:'.htmlspecialchars($cColor).'">'.$avatarHtml.'</div>';
+    if ($avatarLink) {
+        $o .= '</a>';
+    }
+    $o .= '<div class="cmt-main">';
+    $o .= '<div class="cmt-top-row">';
+    $o .= '<span class="cmt-name">'.htmlspecialchars($ct['nick']).'</span>'.$badgeHtml;
+    $o .= '<span class="cmt-time">'.TA($ct['time']).'</span>';
+    if ($loc) $o .= '<span class="cmt-loc">'.htmlspecialchars($loc).'</span>';
+    $o .= '</div>';
+    $o .= '<div class="cmt-text">'.nl2br(htmlspecialchars(preg_replace('/\[图片\](?:https?:\/\/|\/)[^\s<>"\']+\.(?:jpg|jpeg|png|gif|webp)\s*/i', '', $ct['text']))).'</div>';
+    // 图片留言 - 解析文本中的图片标记 [图片]url
+    if (preg_match_all('/\[图片\]((?:https?:\/\/|\/)[^\s<>"\']+\.(?:jpg|jpeg|png|gif|webp))/i', $ct['text'], $m)) {
+        foreach ($m[1] as $imgUrl) {
+            $o .= '<div class="cmt-image"><img src="'.htmlspecialchars($imgUrl).'" onclick="l(\''.htmlspecialchars($imgUrl, ENT_QUOTES).'\')" loading="lazy"></div>';
+        }
+    }
+    $o .= '<div class="cmt-actions">';
+    // 左侧：回复、编辑、删除
+    $o .= '<span class="cmt-reply-btn" onclick="showReplyForm(\''.htmlspecialchars($parentId ?: $cid).'\',\''.htmlspecialchars(addslashes($ct['nick'])).'\',\''.htmlspecialchars($pid).'\')">回复</span>';
+    // 管理员可编辑/删除
+    if ($me && $me['id'] === 'admin') {
+        $o .= '<span class="cmt-action-btn cmt-edit-btn" onclick="editComment(\''.htmlspecialchars($cid).'\',\''.htmlspecialchars($pid).'\')">编辑</span>';
+        $o .= '<span class="cmt-action-btn cmt-del-btn" onclick="if(confirm(\'确定删除这条留言？\')){var f=document.createElement(\'form\');f.method=\'post\';f.innerHTML=\'<input type=hidden name=_csrf value='.htmlspecialchars(csrf_token()).'><input type=hidden name=act value=delete_comment><input type=hidden name=comment_id value='.htmlspecialchars($cid).'>\';document.body.appendChild(f);f.submit()}">删除</span>';
+    }
+    // 右侧：两个爱心（❤️ 点赞 / 💔 心碎），靠右
+    $o .= '<span class="cmt-like-actions">';
+    $o .= '<span class="cmt-like-btn like-heart '.$likeCls.'" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">❤️ <span class="cmt-like-num">'.($likeCount > 0 ? $likeCount : '').'</span></span>';
+    $o .= '<span class="cmt-like-btn dislike-heart '.$dislikeCls.'" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">💔</span>';
+    $o .= '</span>';
+    $o .= '</div>';
+    $o .= '</div></div>';
+    // 编辑表单（默认隐藏）
+    if ($me && $me['id'] === 'admin') {
+        $o .= '<div class="cmt-edit-form" id="cmt-edit-'.htmlspecialchars($cid).'" style="display:none">';
+        $o .= '<form method="post" class="cmt-form">'.csrf_field();
+        $o .= '<input type="hidden" name="act" value="edit_comment">';
+        $o .= '<input type="hidden" name="comment_id" value="'.htmlspecialchars($cid).'">';
+        $o .= '<textarea name="text" required maxlength="500" rows="2">'.htmlspecialchars($ct['text']).'</textarea>';
+        $o .= '<div style="display:flex;gap:6px;width:100%">';
+        $o .= '<button type="submit">保存</button>';
+        $o .= '<button type="button" class="cmt-cancel-btn" onclick="cancelEdit(\''.htmlspecialchars($cid).'\',\''.htmlspecialchars($pid).'\')">取消</button>';
+        $o .= '</div>';
+        $o .= '</form></div>';
+    }
+    return $o;
+}
+
+function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $collapsed = false) {
     $pid = $po['id'] ?? '';
     $isUserPost = !empty($po['user_id']);
     if ($isUserPost) {
@@ -177,11 +303,17 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me) {
     if(!empty($po['images'])) { $o .= '<div class="pimgs '.((count($po['images'])===1)?'c1':((count($po['images'])===2)?'c2':'')).'">'; foreach($po['images'] as $im) $o .= '<img src="'.htmlspecialchars($im).'" onclick="l(\''.htmlspecialchars($im,ENT_QUOTES).'\')" loading="lazy">'; $o .= '</div>'; }
     if(!empty($po['video'])) { $o .= '<div class="pvideo"><video src="'.htmlspecialchars($po['video']).'" controls preload="metadata" style="width:100%;max-height:400px;border-radius:var(--rx)">您的浏览器不支持视频播放</video></div>'; }
     if(!empty($po['music'])) { $o .= '<div class="pmusic"><audio src="'.htmlspecialchars($po['music']).'" controls preload="metadata" style="width:100%">您的浏览器不支持音频播放</audio></div>'; }
-    // Comments section with reply support
-    $o .= '<div class="cmts">';
-    $o .= '<div class="cmt-toggle" onclick="this.nextElementSibling.classList.toggle(\'show\')"><span>💬 '.$cc.' 条留言</span><span class="cmt-arr">▾</span></div>';
-    $o .= '<div class="cmt-body">';
-    
+
+    // ---- 新版评论区 ----
+    $o .= '<div class="cmt-section'.($collapsed ? ' cmt-home-collapsed' : '').'">';
+
+    if ($collapsed) {
+        $topCommentCount = count($postComments);
+        $ccText = $topCommentCount > 0 ? $topCommentCount.' 条留言' : '留言';
+        $o .= '<div class="cmt-toggle" data-pid="'.htmlspecialchars($pid).'" onclick="var s=this.nextElementSibling;if(s.style.display===\'block\'){s.style.display=\'none\';this.innerHTML=\'💬 '.$ccText.'\';this.classList.remove(\'expanded\')}else{s.style.display=\'block\';this.innerHTML=\'收起评论 ▴\';this.classList.add(\'expanded\')}">💬 '.$ccText.'</div>';
+        $o .= '<div class="cmt-body" style="display:none">';
+    }
+
     // Separate top-level and reply comments
     $topComments = [];
     $replies = [];
@@ -192,87 +324,120 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me) {
             $replies[$ct['parent_id']][] = $ct;
         }
     }
-    
-    if (!empty($topComments)) {
-        foreach ($topComments as $ct) {
-            $cid = $ct['id'];
-            // Badge: admin (user_id==='admin') / user (logged in) / guest
-            if ($ct['user_id'] === 'admin') {
-                $badgeLabel = '管理员'; $badgeCls = 'cmt-admin-badge';
-            } elseif (!empty($ct['user_id'])) {
-                $badgeLabel = '用户'; $badgeCls = 'cmt-user-badge';
+
+    // 展示前2条热门评论 + 展开更多
+    $showCount = min(count($topComments), 2);
+    $hiddenCount = count($topComments) - $showCount;
+
+    for ($i = 0; $i < $showCount; $i++) {
+        $ct = $topComments[$i];
+        $cid = $ct['id'];
+        $o .= renderCommentItem($ct, $pid, '', $likedComments, $me);
+
+        // 展开回复
+        if (isset($replies[$cid])) {
+            $rpList = $replies[$cid];
+            $rpTotal = count($rpList);
+            if ($rpTotal > 2) {
+                $o .= '<div class="cmt-expand-replies" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">';
+                $o .= '<div class="cmt-expand-btn" onclick="toggleReplies(this,\''.htmlspecialchars($cid).'\')">展开 '.$rpTotal.' 条回复 ▾</div>';
+                $o .= '<div class="cmt-replies-list" style="display:none">';
+                foreach ($rpList as $rp) {
+                    $o .= renderCommentItem($rp, $pid, $cid, $likedComments, $me);
+                }
+                $o .= '</div></div>';
             } else {
-                $badgeLabel = '游客'; $badgeCls = 'cmt-guest-badge';
-            }
-            $badge = ' <span class="'.$badgeCls.'">'.$badgeLabel.'</span>';
-            $o .= '<div class="cmt" id="cmt-'.htmlspecialchars($cid).'">';
-            $o .= '<div class="cmt-nick">'.htmlspecialchars($ct['nick']).$badge.'</div>';
-            $o .= '<div class="cmt-text">'.nl2br(htmlspecialchars($ct['text'])).'</div>';
-            $o .= '<div class="cmt-meta"><span class="cmt-time">'.TA($ct['time']).'</span><span class="cmt-reply-btn" onclick="showReplyForm(\''.htmlspecialchars($cid).'\',\''.htmlspecialchars(addslashes($ct['nick'])).'\',\''.htmlspecialchars($pid).'\')">↩ 回复</span></div>';
-            
-            // Show replies
-            if (isset($replies[$cid])) {
-                $o .= '<div class="cmt-replies">';
-                foreach ($replies[$cid] as $rp) {
-                    // Badge for reply
-                    if ($rp['user_id'] === 'admin') {
-                        $rpBadgeLabel = '管理员'; $rpBadgeCls = 'cmt-admin-badge';
-                    } elseif (!empty($rp['user_id'])) {
-                        $rpBadgeLabel = '用户'; $rpBadgeCls = 'cmt-user-badge';
-                    } else {
-                        $rpBadgeLabel = '游客'; $rpBadgeCls = 'cmt-guest-badge';
-                    }
-                    $rpBadge = ' <span class="'.$rpBadgeCls.'">'.$rpBadgeLabel.'</span>';
-                    $o .= '<div class="cmt cmt-reply">';
-                    $o .= '<div class="cmt-nick">'.htmlspecialchars($rp['nick']).$rpBadge.'</div>';
-                    $o .= '<div class="cmt-text">'.nl2br(htmlspecialchars($rp['text'])).'</div>';
-                    $o .= '<div class="cmt-meta"><span class="cmt-time">'.TA($rp['time']).'</span><span class="cmt-reply-btn" onclick="showReplyForm(\''.htmlspecialchars($cid).'\',\''.htmlspecialchars(addslashes($rp['nick'])).'\',\''.htmlspecialchars($pid).'\')">↩ 回复</span></div>';
-                    $o .= '</div>';
+                $o .= '<div class="cmt-replies-inline">';
+                foreach ($rpList as $rp) {
+                    $o .= renderCommentItem($rp, $pid, $cid, $likedComments, $me);
                 }
                 $o .= '</div>';
             }
-                        // Admin reply (via backend reply_comment)
-            if (!empty($ct['reply'])) {
-                $o .= '<div class="cmt-admin-reply">';
-                $o .= '<div class="cmt-admin-reply-header">👤 管理员回复 · '.htmlspecialchars($ct['replied_at']??'').'</div>';
-                $o .= '<div class="cmt-admin-reply-text">'.nl2br(htmlspecialchars($ct['reply'])).'</div>';
-                $o .= '</div>';
-            }
-$o .= '</div>';
         }
     }
-    
-    // Reply form (hidden by default, shown via JS) - login required
+
+    if ($hiddenCount > 0) {
+        $o .= '<div class="cmt-show-more" onclick="this.style.display=\'none\';var p=this.parentElement;var all=p.querySelectorAll(\'.cmt-item-hidden,.cmt-expand-replies-hidden\');for(var i=0;i<all.length;i++)all[i].style.display=\'\'">展开全部 '.$hiddenCount.' 条留言 ▾</div>';
+    }
+
+    // 隐藏的评论（从第3条开始）
+    for ($i = $showCount; $i < count($topComments); $i++) {
+        $ct = $topComments[$i];
+        $cid = $ct['id'];
+        $o .= '<div class="cmt-item-hidden" style="display:none">';
+        $o .= renderCommentItem($ct, $pid, '', $likedComments, $me);
+        if (isset($replies[$cid])) {
+            $rpList = $replies[$cid];
+            $rpTotal = count($rpList);
+            $o .= '<div class="cmt-expand-replies-hidden" style="display:block" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">';
+            if ($rpTotal > 2) {
+                $o .= '<div class="cmt-expand-btn" onclick="toggleReplies(this,\''.htmlspecialchars($cid).'\')">展开 '.$rpTotal.' 条回复 ▾</div>';
+                $o .= '<div class="cmt-replies-list" style="display:none">';
+                foreach ($rpList as $rp) {
+                    $o .= renderCommentItem($rp, $pid, $cid, $likedComments, $me);
+                }
+                $o .= '</div>';
+            } else {
+                $o .= '<div class="cmt-replies-inline">';
+                foreach ($rpList as $rp) {
+                    $o .= renderCommentItem($rp, $pid, $cid, $likedComments, $me);
+                }
+                $o .= '</div>';
+            }
+            $o .= '</div>';
+        }
+        $o .= '</div>';
+    }
+
+    // 底部输入区
+    $o .= '<div class="cmt-input-bar" id="cmt-input-bar-'.htmlspecialchars($pid).'">';
+    if ($me) {
+        $o .= '<div class="cmt-avatar-mini" style="background:'.htmlspecialchars($me['avatar_color'] ?? '#d4786e').'">'.(($me['avatar'] ?? '') ? '<img src="'.htmlspecialchars($me['avatar']).'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : '👤').'</div>';
+        $o .= '<form method="post" class="cmt-inline-form">'.csrf_field();
+        $o .= '<input type="hidden" name="act" value="comment">';
+        $o .= '<input type="hidden" name="post_id" value="'.htmlspecialchars($pid).'">';
+        $o .= '<input type="hidden" name="parent_id" value="">';
+        $o .= '<div class="cmt-input-wrap">';
+        $o .= '<input type="text" name="text" placeholder="说点什么…" maxlength="500" class="cmt-inline-input" id="cmt-input-'.htmlspecialchars($pid).'">';
+        $o .= '<div class="cmt-input-tools">';
+        $o .= '<span class="cmt-tool-btn cmt-emoji-btn" onclick="toggleEmoji(this,\'cmt-input-'.htmlspecialchars($pid).'\')" title="表情">😊</span>';
+        $o .= '<span class="cmt-tool-btn cmt-img-btn" onclick="insertImageUrl(\'cmt-input-'.htmlspecialchars($pid).'\')" title="图片">🖼️</span>';
+        $o .= '</div>';
+        $o .= '</div>';
+        $o .= '<button type="submit" class="cmt-inline-send">发送</button>';
+        $o .= '</form>';
+        $o .= '<div class="cmt-emoji-panel" id="cmt-emoji-panel-'.htmlspecialchars($pid).'" style="display:none" onclick="insertEmoji(event,this,\'cmt-input-'.htmlspecialchars($pid).'\')"></div>';
+    } else {
+        $o .= '<div class="cmt-login-bar"><a href="login.php">登录</a> 后才能评论</div>';
+    }
+    $o .= '</div>';
+
+    // 回复框（JS控制显隐）
     if ($me) {
         $o .= '<div class="cmt-reply-form" id="reply-form-'.htmlspecialchars($pid).'" style="display:none">';
         $o .= '<form method="post" class="cmt-form">'.csrf_field();
         $o .= '<input type="hidden" name="act" value="comment">';
         $o .= '<input type="hidden" name="post_id" value="'.htmlspecialchars($pid).'">';
         $o .= '<input type="hidden" name="parent_id" id="reply-parent-'.htmlspecialchars($pid).'" value="">';
-        $o .= '<textarea name="text" id="reply-text-'.htmlspecialchars($pid).'" placeholder="说点什么…" required maxlength="500" rows="2"></textarea>';
-        $o .= '<div style="display:flex;gap:6px;width:100%">';
-        $o .= '<button type="submit">💬 发送</button>';
+        $o .= '<div class="cmt-input-wrap" style="width:100%">';
+        $o .= '<textarea name="text" id="reply-text-'.htmlspecialchars($pid).'" placeholder="回复…" maxlength="500" rows="2" style="flex:1;min-width:0"></textarea>';
+        $o .= '<div class="cmt-input-tools" style="align-self:flex-end">';
+        $o .= '<span class="cmt-tool-btn cmt-emoji-btn" onclick="toggleEmoji(this,\'reply-text-'.htmlspecialchars($pid).'\')" title="表情">😊</span>';
+        $o .= '<span class="cmt-tool-btn cmt-img-btn" onclick="insertImageUrl(\'reply-text-'.htmlspecialchars($pid).'\')" title="图片">🖼️</span>';
+        $o .= '</div>';
+        $o .= '</div>';
+        $o .= '<div style="display:flex;gap:6px;width:100%;margin-top:6px">';
+        $o .= '<button type="submit">发送</button>';
         $o .= '<button type="button" class="cmt-cancel-btn" onclick="hideReplyForm(\''.htmlspecialchars($pid).'\')">取消</button>';
         $o .= '</div>';
-        $o .= '</form></div>';
+        $o .= '</form>';
+        $o .= '<div class="cmt-emoji-panel" id="reply-emoji-panel-'.htmlspecialchars($pid).'" style="display:none" onclick="insertEmoji(event,this,\'reply-text-'.htmlspecialchars($pid).'\')"></div>';
+        $o .= '</div>';
     }
-    
-    // Main comment form (for new top-level comment) - login required
-    if ($me) {
-        $o .= '<div class="cmt-main-form" id="main-form-'.htmlspecialchars($pid).'">';
-        $o .= '<form method="post" class="cmt-form">'.csrf_field();
-        $o .= '<input type="hidden" name="act" value="comment">';
-        $o .= '<input type="hidden" name="post_id" value="'.htmlspecialchars($pid).'">';
-        $o .= '<input type="hidden" name="parent_id" value="">';
-        $o .= '<textarea name="text" placeholder="说点什么…" required maxlength="500" rows="2"></textarea>';
-        $o .= '<button type="submit">💬 留言</button>';
-        $o .= '</form></div>';
-    } else {
-        $o .= '<div class="cmt-login-prompt" style="text-align:center;padding:14px 0;font-size:.9em;color:var(--tl)"><a href="login.php" style="color:var(--pri);font-weight:500">登录</a> 后才能评论</div>';
-    }
-    
-    $o .= '</div></div>';
-    $o .= '</div>';
+
+    if ($collapsed) $o .= '</div>'; // .cmt-body
+    $o .= '</div>'; // .cmt-section
+    $o .= '</div>'; // .ncs.pc
     return $o;
 }
 ?><!DOCTYPE html>
@@ -325,7 +490,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .pc .pi .name{font-weight:700;font-size:.9em}
 .pc .pi .time{font-size:.72em;color:var(--tl)}
 .pc .pm{font-size:1.4em;margin-left:auto}
-.pc .pb{font-size:.93em;line-height:1.7;color:var(--tx);white-space:pre-wrap;word-break:break-word}
+.pc .pb{font-size:.93em;line-height:1.7;color:var(--tx);white-space:pre-wrap;word-break:break-all;overflow-wrap:break-word}
 .pc .ptitle{font-size:1.1em;font-weight:700;color:var(--pri);margin-bottom:8px}
 .pc .ptags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .pc .ptags .tag{font-size:.7em;color:var(--pri);background:rgba(212,120,110,.08);padding:3px 10px;border-radius:12px}
@@ -338,36 +503,60 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .pc .pvideo video{width:100%;border-radius:var(--rx);box-shadow:0 1px 4px rgba(0,0,0,0.08);background:#000}
 .pc .pmusic{margin-top:12px}
 .pc .pmusic audio{width:100%;border-radius:var(--rx);box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-/* Comments */
-.cmts{margin-top:12px;border-top:1px solid rgba(0,0,0,.05);padding-top:10px}
-.cmt-toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:.8em;color:var(--tl);padding:6px 0}
-.cmt-toggle:hover{color:var(--tx)}
-.cmt-arr{font-size:.8em;transition:transform .2s}
-.cmt-body{display:none}
-.cmt-body.show{display:block}
-.cmt{background:rgba(0,0,0,.02);border-radius:10px;padding:10px 14px;margin-bottom:8px}
-.cmt .cmt-nick{font-weight:700;font-size:.82em;color:var(--pri);margin-bottom:3px}
-.cmt .cmt-text{font-size:.82em;color:var(--tx);line-height:1.5;word-break:break-word}
-.cmt .cmt-time{font-size:.68em;color:var(--tl);margin-top:4px}
-.cmt-form{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.cmt-form input[type=text]{flex:1;min-width:80px;padding:8px 12px;border:1px solid rgba(0,0,0,.08);border-radius:10px;font-size:.82em;outline:none;background:#fff;font-family:inherit}
-.cmt-form textarea{width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,.08);border-radius:10px;font-size:.82em;outline:none;resize:vertical;min-height:36px;font-family:inherit}
-.cmt-form button{padding:8px 18px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-size:.82em;cursor:pointer;transition:opacity .2s;white-space:nowrap}
-.cmt-form button:hover{opacity:.85}
-.cmt-admin-badge{display:inline-block;background:var(--pri);color:#fff;font-size:.65em;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle;font-weight:400}
-.cmt-user-badge{display:inline-block;background:#6b8db5;color:#fff;font-size:.65em;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle;font-weight:400}
-.cmt-guest-badge{display:inline-block;background:#aaa;color:#fff;font-size:.65em;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle;font-weight:400}
-.cmt-meta{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
-.cmt-reply-btn{cursor:pointer;font-size:.72em;color:var(--pri);user-select:none;transition:opacity .2s}
+/* Comments v2 — 头像+点赞模式 */
+.cmt-section{margin-top:8px;border-top:1px solid rgba(0,0,0,.06);padding-top:10px}
+.cmt-item{display:flex;gap:10px;padding:10px 0}
+.cmt-item+.cmt-item{border-top:1px solid rgba(0,0,0,.03)}
+.cmt-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1em;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.cmt-main{flex:1;min-width:0;overflow-wrap:break-word}
+.cmt-top-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:3px}
+.cmt-name{font-weight:700;font-size:.82em;color:var(--tx)}
+.cmt-time{font-size:.68em;color:var(--tl)}
+.cmt-loc{font-size:.68em;color:var(--tl)}
+.cmt-loc::before{content:'· '}
+.cmt-badge{display:inline-block;font-size:.6em;padding:1px 6px;border-radius:8px;vertical-align:middle;font-weight:400}
+.cmt-badge.admin{background:var(--pri);color:#fff}
+.cmt-badge.guest{background:#aaa;color:#fff}
+.cmt-text{font-size:.82em;color:var(--tx);line-height:1.5;word-break:break-all;overflow-wrap:break-word;margin-bottom:4px;overflow-x:hidden}
+.cmt-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.cmt-like-actions{margin-left:auto;display:flex;align-items:center;gap:6px}
+.cmt-like-btn{cursor:pointer;font-size:.78em;filter:grayscale(1);opacity:.55;user-select:none;transition:filter .2s,opacity .2s;display:inline-flex;align-items:center;gap:2px}
+.cmt-like-btn:hover{opacity:.75}
+.cmt-like-btn.like-heart.liked{filter:none;opacity:1}
+.cmt-like-btn.dislike-heart.liked{filter:none;opacity:1}
+.cmt-like-num{font-size:.9em}
+.cmt-reply-btn{cursor:pointer;font-size:.78em;color:var(--tl);user-select:none;transition:opacity .15s}
 .cmt-reply-btn:hover{opacity:.7}
-.cmt-replies{margin-left:12px;padding-left:12px;border-left:2px solid var(--pl)}
-.cmt-reply{background:rgba(0,0,0,.015);border-radius:8px;padding:8px 12px;margin-bottom:6px}
-.cmt-admin-reply{background:#fff5f5;border:1px solid #f0c8c8;border-radius:10px;padding:10px 14px;margin:6px 0;border-left:4px solid var(--pri)}
+.cmt-action-btn{cursor:pointer;font-size:.72em;color:var(--tl);user-select:none;margin-left:8px;padding:2px 6px;border-radius:4px;transition:all .15s}
+.cmt-action-btn:hover{opacity:.7}
+.cmt-del-btn{color:#c62828}
+.cmt-del-btn:hover{background:#ffebee}
+.cmt-edit-form{margin:4px 0 4px 46px}
+.cmt-expand-btn{cursor:pointer;font-size:.78em;color:var(--pri);padding:4px 0 4px 46px;user-select:none}
+.cmt-replies-inline{padding-left:46px}
+.cmt-show-more{cursor:pointer;text-align:center;font-size:.8em;color:var(--pri);padding:8px 0;user-select:none;border-top:1px solid rgba(0,0,0,.04);margin-top:4px}
+.cmt-input-bar{display:flex;align-items:center;gap:8px;padding-top:10px;margin-top:10px;border-top:1px solid rgba(0,0,0,.06)}
+.cmt-avatar-mini{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8em;overflow:hidden}
+.cmt-inline-form{flex:1;display:flex;gap:6px;min-width:0}
+.cmt-inline-input{flex:1;padding:7px 12px;border:1px solid rgba(0,0,0,.1);border-radius:18px;font-size:.82em;outline:none;background:#f7f7f7;font-family:inherit;min-width:0}
+.cmt-inline-input:focus{background:#fff;border-color:var(--pl)}
+.cmt-inline-send{padding:7px 14px;background:var(--pri);color:#fff;border:none;border-radius:18px;font-size:.78em;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.cmt-login-bar{text-align:center;font-size:.82em;color:var(--tl);padding:10px 0;width:100%}
+.cmt-login-bar a{color:var(--pri);font-weight:500}
+/* 回复框 */
+.cmt-reply-form{margin-top:8px;padding-left:46px}
+.cmt-form{display:flex;flex-wrap:wrap;gap:6px}
+.cmt-form textarea{width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,.1);border-radius:12px;font-size:.82em;outline:none;resize:vertical;min-height:36px;font-family:inherit}
+.cmt-form button{padding:8px 18px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:.82em;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.cmt-form button:hover{opacity:.85}
+.cmt-cancel-btn{padding:8px 14px;background:#eee;color:var(--tl);border:none;border-radius:12px;font-size:.82em;cursor:pointer}
+/* 管理员回复 */
+.cmt-admin-reply{margin:6px 0 6px 46px;background:#fff5f5;border:1px solid #f0c8c8;border-radius:10px;padding:10px 14px;border-left:4px solid var(--pri)}
 .cmt-admin-reply-header{font-size:.75em;font-weight:700;color:var(--pri);margin-bottom:4px}
-.cmt-admin-reply-text{font-size:.82em;color:var(--tx);line-height:1.5;word-break:break-word}
-.cmt-reply-form{margin-top:8px}
-.cmt-cancel-btn{padding:8px 14px;background:#eee;color:var(--tl);border:none;border-radius:10px;font-size:.82em;cursor:pointer;transition:opacity .2s}
-.cmt-cancel-btn:hover{opacity:.8}
+.cmt-admin-reply-text{font-size:.82em;color:var(--tx);line-height:1.5}
+.cmt-toggle{text-align:center;font-size:.82em;color:var(--pri);padding:10px 0;cursor:pointer;user-select:none;transition:opacity .15s}
+.cmt-toggle:hover{opacity:.7}
+.cmt-toggle.expanded{color:var(--tl);font-size:.78em;padding:6px 0}
 .cmt-msg{padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:.8em}
 .cmt-msg.ok{background:#e8f5e9;color:#2e7d32}
 .cmt-msg.err{background:#ffebee;color:#c62828}
@@ -410,6 +599,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 @keyframes floatUp{0%{transform:translateY(105vh)scale(0);opacity:0}10%{opacity:.5}90%{opacity:.15}100%{transform:translateY(-5vh)scale(1.2);opacity:0}}
 .ft{text-align:center;padding:20px 12px 8px;color:var(--tl);font-size:.7em;line-height:1.8}
 @media(min-width:600px){.main-container{padding:24px 24px 110px}.ag{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.cmt-reply-form{padding-left:0}.cmt-replies-inline{padding-left:0}.cmt-expand-btn{padding-left:0}.cmt-admin-reply{margin-left:0}.cmt-expand-replies{padding-left:0}.cmt-expand-replies-hidden{padding-left:0}.cmt-edit-form{margin-left:0}}
 .bn a[href="?p=home"] .ni{color:#e85d5d}
 .bn a[href="?p=posts"] .ni{color:#5c9ce6}
 .bn a[href="?p=album"] .ni{color:#4da6ff}
@@ -424,6 +614,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .cp-content img{max-width:100%;border-radius:8px;margin:8px 0}
 .cp-content h3,.cp-content h4{color:var(--pri);margin:16px 0 8px}
 .cp-content p{margin:0 0 12px}
+/* 头像可点击 */
+.cmt-avatar-link{text-decoration:none;display:inline-flex;max-width:100%}
+/* 评论图片 */
+.cmt-image{margin:4px 0 2px}
+.cmt-image img{max-width:100%;max-height:300px;border-radius:8px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+/* 输入框工具条 */
+.cmt-input-wrap{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+.cmt-inline-input{flex:1;min-width:0}
+.cmt-input-tools{display:flex;gap:2px;flex-shrink:0}
+.cmt-tool-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1.1em;transition:all .15s;user-select:none}
+.cmt-tool-btn:hover{background:var(--pl);transform:scale(1.1)}
+.cmt-img-btn{font-size:1em}
+/* 表情面板 */
+.cmt-emoji-panel{position:absolute;bottom:100%;left:0;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.12);padding:8px;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;z-index:100;max-height:200px;overflow-y:auto;margin-bottom:4px;border:1px solid #eee;max-width:calc(100vw - 40px)}
+.cmt-emoji-panel span{display:flex;align-items:center;justify-content:center;width:32px;max-width:100%;aspect-ratio:1;cursor:pointer;border-radius:6px;font-size:1.2em;transition:background .1s}
+.cmt-emoji-panel span:hover{background:var(--pl)}
+.cmt-input-bar{position:relative}
+.cmt-reply-form{position:relative}
 </style>
 </head>
 <body<?php if(!empty($C['background_image'])): ?> style="background-image:url('<?php echo htmlspecialchars($C['background_image']); ?>');background-size:cover;background-position:center;background-attachment:fixed;"<?php endif; ?>>
@@ -510,7 +718,7 @@ fetch(apiUrl)
 
 <?php if (!empty($P)): ?>
 <div class="sh" style="margin-top:8px"><span class="si">💬</span><span class="st">最新说说</span><span class="sl"></span></div>
-<?php foreach (array_slice($P,0,3) as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me); endif; ?>
+<?php foreach (array_slice($P,0,3) as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, true); endif; ?>
 
 <?php if (!empty($PG)): ?>
 <div class="sh" style="margin-top:8px"><span class="si">📑</span><span class="st">更多精彩</span><span class="sl"></span></div>
@@ -526,7 +734,7 @@ fetch(apiUrl)
 <?php if ($pg === 'posts'): ?>
 <div class="sh"><span class="si">💬</span><span class="st">甜蜜说说</span><span class="sc"><?php echo count($P); ?></span></div>
 <?php if (empty($P)): ?><div class="ncs empty"><div class="ei">💭</div><div class="et">还没有说说<br>去后台发布第一条吧~</div></div>
-<?php else: foreach($P as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me); endif; endif; ?>
+<?php else: foreach($P as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments); endif; endif; ?>
 
 <?php if ($pg === 'album'): ?>
 <div class="sh"><span class="si">📷</span><span class="st">我们的相册</span><span class="sc"><?php echo count($PH); ?>张</span></div>
@@ -604,22 +812,169 @@ function showReplyForm(parentId, nick, postId) {
     var rf = document.getElementById('reply-form-' + postId);
     var pf = document.getElementById('reply-parent-' + postId);
     var rt = document.getElementById('reply-text-' + postId);
-    var mf = document.getElementById('main-form-' + postId);
+    var ib = document.getElementById('cmt-input-bar-' + postId);
     if (rf && pf && rt) {
         pf.value = parentId;
         rt.placeholder = '回复 @' + nick + '…';
         rf.style.display = 'block';
-        if (mf) mf.style.display = 'none';
+        if (ib) ib.style.display = 'none';
         rt.focus();
     }
 }
 function hideReplyForm(postId) {
     var rf = document.getElementById('reply-form-' + postId);
-    var mf = document.getElementById('main-form-' + postId);
+    var ib = document.getElementById('cmt-input-bar-' + postId);
     if (rf) rf.style.display = 'none';
-    if (mf) mf.style.display = 'block';
+    if (ib) ib.style.display = '';
+}
+function editComment(cid, postId) {
+    var ef = document.getElementById('cmt-edit-' + cid);
+    if (ef) {
+        ef.style.display = 'block';
+        // 隐藏评论输入栏
+        var ib = document.getElementById('cmt-input-bar-' + postId);
+        if (ib) ib.style.display = 'none';
+    }
+}
+function cancelEdit(cid, postId) {
+    var ef = document.getElementById('cmt-edit-' + cid);
+    if (ef) ef.style.display = 'none';
+    var ib = document.getElementById('cmt-input-bar-' + postId);
+    if (ib) ib.style.display = '';
 }
 setInterval(function(){var el=document.getElementById('dc');if(el){var ld=new Date('<?php echo htmlspecialchars($ld); ?>'),df=Math.floor((Date.now()-ld)/86400000);if(el.textContent!=df){el.style.transform='scale(1.15)';el.textContent=df;setTimeout(function(){el.style.transform='scale(1)'},300)}}},60000);
+
+// 点赞
+(function(){
+var liked=JSON.parse(localStorage.getItem('cmt_liked')||'{}');
+document.addEventListener('click',function(e){
+    var btn=e.target.closest('.cmt-like-btn');
+    if(!btn) return;
+    e.preventDefault();
+    var cid=btn.getAttribute('data-cid');
+    <?php if ($me): ?>
+    fetch('like.php',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({comment_id:cid,_csrf:'<?php echo csrf_token(); ?>',type:btn.classList.contains('dislike-heart')?'dislike':'like'})
+    }).then(function(r){return r.json()}).then(function(d){
+        if(d.error){alert(d.error);return}
+        // 更新两个爱心的状态
+        var parentActions = btn.closest('.cmt-like-actions');
+        if(!parentActions) return;
+        var likeHeart = parentActions.querySelector('.like-heart');
+        var dislikeHeart = parentActions.querySelector('.dislike-heart');
+        var likeNum = likeHeart ? likeHeart.querySelector('.cmt-like-num') : null;
+        // 根据返回的 type 设置状态
+        if(likeHeart) likeHeart.classList.toggle('liked', d.type === 'like');
+        if(dislikeHeart) dislikeHeart.classList.toggle('liked', d.type === 'dislike');
+        if(likeNum) likeNum.textContent = d.count || '';
+    }).catch(function(e){console.error(e)});
+    <?php else: ?>
+    // 未登录用localStorage临时记录
+    var isLiked=liked[cid];
+    var parentActions = btn.closest('.cmt-like-actions');
+    if(!parentActions) return;
+    var likeHeart = parentActions.querySelector('.like-heart');
+    var likeNum = likeHeart ? likeHeart.querySelector('.cmt-like-num') : null;
+    var cur=parseInt(likeNum ? likeNum.textContent : '0')||0;
+    if(isLiked){
+        delete liked[cid];
+        if(likeHeart) likeHeart.classList.remove('liked');
+        cur=Math.max(0,cur-1);
+    }else{
+        liked[cid]=true;
+        if(likeHeart) likeHeart.classList.add('liked');
+        cur++;
+    }
+    if(likeNum) likeNum.textContent = cur || '';
+    localStorage.setItem('cmt_liked',JSON.stringify(liked));
+    <?php endif; ?>
+});
+})();
+
+// 展开/收起回复
+function toggleReplies(btn,cid){
+    var list=btn.parentElement.querySelector('.cmt-replies-list');
+    if(!list) return;
+    var total=list.querySelectorAll('.cmt-item').length;
+    if(list.style.display==='none'){
+        list.style.display='';
+        btn.textContent='收起回复 ▴';
+    }else{
+        list.style.display='none';
+        btn.textContent='展开 '+total+' 条回复 ▾';
+    }
+}
+
+// 常用表情列表
+const EMOJIS = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥴','😵','🤯','🥳','🥺','😢','😭','😤','😠','😡','🤬','💕','❤️','🧡','💛','💚','💙','💜','🖤','💗','💖','✨','🌟','⭐','🔥','💯','🎉','🎊','🎈','🎁','💪','👍','👎','👏','🙌','🤝','👋','✌️','🤞','🤟','🫶','🌹','🥀','🌸','🌺','🌻','🌷','🌿','🍀','🐱','🐶','🐰','🦊','🐻','🐼','🐨','🐒','😺','😸','😹','😻','😽','🙀','😿','😾'];
+
+// 切换表情面板
+function toggleEmoji(btn, inputId) {
+    var panel = btn.closest('.cmt-input-bar,.cmt-reply-form,.cmt-edit-form').querySelector('.cmt-emoji-panel');
+    if (!panel) return;
+    if (panel.style.display === 'block') {
+        panel.style.display = 'none';
+        return;
+    }
+    // 关闭其他面板
+    document.querySelectorAll('.cmt-emoji-panel').forEach(function(p) { p.style.display = 'none'; });
+    // 填充表情
+    if (!panel._filled) {
+        var html = '';
+        EMOJIS.forEach(function(e) { html += '<span data-emoji="' + e + '">' + e + '</span>'; });
+        panel.innerHTML = html;
+        panel._filled = true;
+    }
+    panel.style.display = 'block';
+}
+
+// 插入表情
+function insertEmoji(event, panel, inputId) {
+    var target = event.target;
+    if (target.tagName !== 'SPAN' || !target.dataset.emoji) return;
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var emoji = target.dataset.emoji;
+    // 支持 input[type=text] 和 textarea
+    if (input.selectionStart !== undefined) {
+        var start = input.selectionStart;
+        var end = input.selectionEnd;
+        input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+        input.selectionStart = input.selectionEnd = start + emoji.length;
+    } else {
+        input.value += emoji;
+    }
+    input.focus();
+    // 不关闭面板，用户可连续选
+}
+
+// 点击页面其他地方关闭表情面板
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.cmt-emoji-panel') && !e.target.closest('.cmt-emoji-btn')) {
+        document.querySelectorAll('.cmt-emoji-panel').forEach(function(p) { p.style.display = 'none'; });
+    }
+});
+
+// 图片直链插入
+function insertImageUrl(inputId) {
+    var url = prompt('请输入图片直链链接（支持 jpg/png/gif/webp）：');
+    if (url && url.trim()) {
+        url = url.trim();
+        var input = document.getElementById(inputId);
+        if (!input) return;
+        var ins = ' [图片]' + url + ' ';
+        if (input.tagName === 'TEXTAREA') {
+            var start = input.selectionStart, end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + ins + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start + ins.length;
+        } else {
+            input.value += ins;
+        }
+        input.focus();
+    }
+}
 </script>
 </body>
 </html>
