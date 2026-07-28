@@ -30,7 +30,7 @@ if ($isOwn) {
         $me['avatar'] = $u['avatar'] ?? ($me['avatar'] ?? '');
         $me['nickname'] = $u['nickname'] ?? ($me['nickname'] ?? '');
         $me['avatar_color'] = $u['avatar_color'] ?? ($me['avatar_color'] ?? '#d4786e');
-        $_SESSION['user'] = array_merge($_SESSION['user'], [
+        $_SESSION['user'] = array_merge($me, [
             'created_at' => $me['created_at'],
             'avatar' => $me['avatar'],
             'nickname' => $me['nickname'],
