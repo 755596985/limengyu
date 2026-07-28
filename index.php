@@ -24,6 +24,7 @@ $me = $_SESSION['user'] ?? (isset($_SESSION['cp_admin']) ? ['id' => 'admin', 'ni
 $clientIp = client_ip();
 $commentMsg = $commentErr = '';
 $userPostMsg = $userPostErr = '';
+$C = get_config();
 
 // 先处理 POST，成功后 PRG 跳转，避免重复提交并防止访问量误计
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'logout') {
@@ -102,7 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'delete_c
     }
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'user_post') {
-    if (!$me) {
+    if (!($C['show_user_posts'] ?? 1)) {
+        $userPostErr = '发说说功能已关闭';
+    } elseif (!$me) {
         $userPostErr = '请先登录！';
     } else {
         $content = trim($_POST['content'] ?? '');
@@ -135,7 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'user_pos
 if (isset($_GET['cmt'])) $commentMsg = '留言成功！💕';
 if (isset($_GET['posted'])) $userPostMsg = '发布成功！💕';
 
-$C = get_config();
 $P = posts_all();
 $PL = places_all();
 $T = todos_all();
@@ -698,25 +700,25 @@ fetch(apiUrl)
 
 <?php if ($pg === 'home'): ?>
 <div class="nc tc">
-<div class="tl">已 经 在 一 起</div>
+<div class="tl"><?php echo htmlspecialchars($C['love_title'] ?? '已经在一起'); ?></div>
 <div class="tn" id="dc"><?php echo $ds; ?></div>
 <div class="td"><?php echo $y; ?>年 <?php echo $m; ?>个月 <?php echo $d; ?>天</div>
 <div class="tdt">📅 <?php echo date('Y/m/d', strtotime($ld)); ?> → ∞</div>
 </div>
 
 <div class="sr">
-<div class="ncs ss"><div class="n"><?php echo count($P); ?></div><div class="l">💬 说说</div></div>
-<div class="ncs ss"><div class="n"><?php echo count($PH); ?></div><div class="l">📷 相册</div></div>
-<div class="ncs ss"><div class="n"><?php echo count($PL); ?></div><div class="l">📍 足迹</div></div>
-<div class="ncs ss"><div class="n"><?php echo $DN.'/'.count($T); ?></div><div class="l">✅ 清单</div></div>
+<?php if ($C['show_comments'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($P); ?></div><div class="l">💬 说说</div></div><?php endif; ?>
+<?php if ($C['show_album'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PH); ?></div><div class="l">📷 相册</div></div><?php endif; ?>
+<?php if ($C['show_places'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PL); ?></div><div class="l">📍 足迹</div></div><?php endif; ?>
+<?php if ($C['show_todos'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo $DN.'/'.count($T); ?></div><div class="l">✅ 清单</div></div><?php endif; ?>
 </div>
 
-<a href="?p=posts" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">💬</span><span>甜蜜说说</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo count($P); ?>条</span><span class="ar">›</span></a>
-<a href="?p=album" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">📷</span><span>我们的相册</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo count($PH); ?>张</span><span class="ar">›</span></a>
-<a href="?p=places" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">📍</span><span>去过的地方</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo count($PL); ?>个</span><span class="ar">›</span></a>
-<a href="?p=todos" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">✅</span><span>一起完成的事</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo $DN.'/'.count($T); ?></span><span class="ar">›</span></a>
+<?php if ($C['show_comments'] ?? 1): ?><a href="?p=posts" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">💬</span><span>甜蜜说说</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo count($P); ?>条</span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_album'] ?? 1): ?><a href="?p=album" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">📷</span><span>我们的相册</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo count($PH); ?>张</span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_places'] ?? 1): ?><a href="?p=places" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">📍</span><span>去过的地方</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo count($PL); ?>个</span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_todos'] ?? 1): ?><a href="?p=todos" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">✅</span><span>一起完成的事</span></span><span style="font-size:.78em;color:#8c7e78;background:#f0f0f0;padding:2px 10px;border-radius:10px"><?php echo $DN.'/'.count($T); ?></span><span class="ar">›</span></a><?php endif; ?>
 
-<?php if (!empty($P)): ?>
+<?php if (($C['show_comments'] ?? 1) && !empty($P)): ?>
 <div class="sh" style="margin-top:8px"><span class="si">💬</span><span class="st">最新说说</span><span class="sl"></span></div>
 <?php foreach (array_slice($P,0,3) as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, true); endif; ?>
 
@@ -726,27 +728,27 @@ fetch(apiUrl)
 <a href="?p=<?php echo htmlspecialchars($cpg['slug']);?>" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:#5a4e4a;font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em"><?php echo htmlspecialchars($cpg['icon']??'📄');?></span><span><?php echo htmlspecialchars($cpg['title']);?></span></span><span class="ar">›</span></a>
 <?php endforeach; endif; ?>
 
-<?php if (!empty($PH)): $lp = array_slice($PH,0,4); ?>
+<?php if (($C['show_album'] ?? 1) && !empty($PH)): $lp = array_slice($PH,0,4); ?>
 <div class="sh" style="margin-top:8px"><span class="si">📷</span><span class="st">最新照片</span><span class="sl"></span></div>
 <div class="ag"><?php foreach($lp as $ph): ?><div class="ai" onclick="l('<?php echo htmlspecialchars($ph['url'],ENT_QUOTES); ?>')"><img src="<?php echo htmlspecialchars($ph['url']); ?>" loading="lazy"><?php if(!empty($ph['title'])):?><div class="cap"><?php echo htmlspecialchars($ph['title']); ?></div><?php endif; ?></div><?php endforeach; ?></div>
 <?php endif; endif; /* end home */ ?>
 
-<?php if ($pg === 'posts'): ?>
+<?php if ($pg === 'posts' && ($C['show_comments'] ?? 1)): ?>
 <div class="sh"><span class="si">💬</span><span class="st">甜蜜说说</span><span class="sc"><?php echo count($P); ?></span></div>
 <?php if (empty($P)): ?><div class="ncs empty"><div class="ei">💭</div><div class="et">还没有说说<br>去后台发布第一条吧~</div></div>
 <?php else: foreach($P as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments); endif; endif; ?>
 
-<?php if ($pg === 'album'): ?>
+<?php if ($pg === 'album' && ($C['show_album'] ?? 1)): ?>
 <div class="sh"><span class="si">📷</span><span class="st">我们的相册</span><span class="sc"><?php echo count($PH); ?>张</span></div>
 <?php if (empty($PH)): ?><div class="ncs empty"><div class="ei">🖼️</div><div class="et">相册还是空的<br>去后台添加照片吧~</div></div>
 <?php else: ?><div class="ag"><?php foreach($PH as $ph): ?><div class="ai" onclick="l('<?php echo htmlspecialchars($ph['url'],ENT_QUOTES); ?>')"><img src="<?php echo htmlspecialchars($ph['url']); ?>" loading="lazy"><?php if(!empty($ph['title'])):?><div class="cap"><?php echo htmlspecialchars($ph['title']); ?></div><?php endif; ?></div><?php endforeach; ?></div><?php endif; endif; ?>
 
-<?php if ($pg === 'places'): ?>
+<?php if ($pg === 'places' && ($C['show_places'] ?? 1)): ?>
 <div class="sh"><span class="si">📍</span><span class="st">去过的地方</span><span class="sc"><?php echo count($PL); ?>个</span></div>
 <?php if (empty($PL)): ?><div class="ncs empty"><div class="ei">🗺️</div><div class="et">还没有记录一起去过的地方</div></div>
 <?php else: foreach($PL as $pl): ?><div class="ncs plc"><?php if (!empty($pl['image'])): ?><img class="pimg" src="<?php echo htmlspecialchars($pl['image']); ?>" onclick="l('<?php echo htmlspecialchars($pl['image'],ENT_QUOTES); ?>')" loading="lazy"><?php else: ?><div class="pimg ni">📍</div><?php endif; ?><div class="pin"><div class="pn"><?php echo htmlspecialchars($pl['name']??'未知地点'); ?></div><div class="pd">🕐 <?php echo htmlspecialchars($pl['time']??''); ?></div><?php if (!empty($pl['note'])): ?><div class="pnote"><?php echo nl2br(htmlspecialchars($pl['note'])); ?></div><?php endif; ?></div></div><?php endforeach; endif; endif; ?>
 
-<?php if ($pg === 'todos'): ?>
+<?php if ($pg === 'todos' && ($C['show_todos'] ?? 1)): ?>
 <div class="sh"><span class="si">✅</span><span class="st">一起完成的事</span><span class="sc"><?php echo $DN.'/'.count($T); ?></span></div>
 <?php if (empty($T)): ?><div class="ncs empty"><div class="ei">📋</div><div class="et">清单还是空的<br>去后台添加想一起做的事吧~</div></div>
 <?php else: usort($T,function($a,$b){return ($a['done']??0)-($b['done']??0)?:strtotime($b['time'])-strtotime($a['time']);}); foreach($T as $td): $isd=!empty($td['done']); ?>
