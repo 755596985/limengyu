@@ -283,17 +283,23 @@ function get_config(): array {
             'name1' => '男神', 'name2' => '女神', 'love_date' => '2024-01-01',
             'site_title' => '', 'beian' => '本站由小兔云提供技术支持 · 仅供个人使用',
             'avatar1' => '', 'avatar2' => '', 'background_image' => '',
+            'love_title' => '已经在一起',
+            'show_comments' => 1, 'show_album' => 1, 'show_places' => 1,
+            'show_todos' => 1, 'show_user_posts' => 1,
         ];
     }
     return $row;
 }
 
 function save_config(array $c): void {
-    $st = db()->prepare('UPDATE cp_config SET name1=?, name2=?, love_date=?, site_title=?, beian=?, avatar1=?, avatar2=?, background_image=? WHERE id=1');
+    $st = db()->prepare('UPDATE cp_config SET name1=?, name2=?, love_date=?, site_title=?, beian=?, avatar1=?, avatar2=?, background_image=?, love_title=?, show_comments=?, show_album=?, show_places=?, show_todos=?, show_user_posts=? WHERE id=1');
     $st->execute([
         $c['name1'] ?? '男神', $c['name2'] ?? '女神', $c['love_date'] ?? '2024-01-01',
         $c['site_title'] ?? '', $c['beian'] ?? '',
         $c['avatar1'] ?? '', $c['avatar2'] ?? '', $c['background_image'] ?? '',
+        $c['love_title'] ?? '已经在一起',
+        $c['show_comments'] ?? 1, $c['show_album'] ?? 1, $c['show_places'] ?? 1,
+        $c['show_todos'] ?? 1, $c['show_user_posts'] ?? 1,
     ]);
 }
 
@@ -430,7 +436,10 @@ function post_delete_by_id(string $id, string $userId, string $root): bool {
 
 // ---------- Comments ----------
 function comments_all(): array {
-    $rows = db()->query('SELECT * FROM cp_comments ORDER BY created_at DESC')->fetchAll();
+    $rows = db()->query('SELECT c.*, u.avatar AS user_avatar, u.avatar_color AS user_avatar_color, u.location AS user_location
+        FROM cp_comments c
+        LEFT JOIN cp_users u ON c.user_id = u.id
+        ORDER BY c.created_at DESC')->fetchAll();
     foreach ($rows as &$r) {
         $r['time'] = $r['created_at'];
     }
@@ -438,6 +447,62 @@ function comments_all(): array {
     return $rows;
 }
 
+function comment_like_toggle(string $commentId, string $userId, string $type = 'like'): array {
+    // Ensure type column exists (migration)
+    static $migrated = false;
+    if (!$migrated) {
+        try {
+            db()->exec("ALTER TABLE cp_comment_likes ADD COLUMN type VARCHAR(10) DEFAULT 'like' AFTER user_id");
+        } catch (Throwable $e) {}
+        $migrated = true;
+    }
+    $st = db()->prepare('SELECT type FROM cp_comment_likes WHERE comment_id=? AND user_id=?');
+    $st->execute([$commentId, $userId]);
+    $existing = $st->fetchColumn();
+    if ($existing !== false) {
+        if ($existing === $type) {
+            // Same type - toggle off
+            db()->prepare('DELETE FROM cp_comment_likes WHERE comment_id=? AND user_id=?')->execute([$commentId, $userId]);
+            db()->prepare('UPDATE cp_comments SET likes = GREATEST(0, likes - 1) WHERE id=?')->execute([$commentId]);
+            $liked = false;
+            $activeType = null;
+        } else {
+            // Different type - switch
+            db()->prepare('UPDATE cp_comment_likes SET type=? WHERE comment_id=? AND user_id=?')->execute([$type, $commentId, $userId]);
+            $liked = true;
+            $activeType = $type;
+        }
+    } else {
+        // New like/dislike
+        db()->prepare('INSERT INTO cp_comment_likes (comment_id, user_id, type, created_at) VALUES (?,?,?,?)')->execute([$commentId, $userId, $type, date('Y-m-d H:i:s')]);
+        db()->prepare('UPDATE cp_comments SET likes = likes + 1 WHERE id=?')->execute([$commentId]);
+        $liked = true;
+        $activeType = $type;
+    }
+    $newCountSt = db()->prepare('SELECT likes FROM cp_comments WHERE id=?');
+    $newCountSt->execute([$commentId]);
+    $newCount = $newCountSt->fetchColumn();
+    return ['liked' => $liked, 'count' => (int)$newCount, 'type' => $activeType];
+}function comment_likes_status(array $commentIds, string $userId): array {
+    if (empty($commentIds)) return [];
+    $placeholders = implode(',', array_fill(0, count($commentIds), '?'));
+    $params = $commentIds;
+    $params[] = $userId;
+    try {
+        $st = db()->prepare("SELECT comment_id, type FROM cp_comment_likes WHERE comment_id IN ($placeholders) AND user_id=?");
+        $st->execute($params);
+        $result = [];
+        while ($row = $st->fetch()) { $result[$row['comment_id']] = $row['type'] ?? 'like'; }
+        return $result;
+    } catch (Throwable $e) {
+        // Fallback without type column
+        $st = db()->prepare("SELECT comment_id FROM cp_comment_likes WHERE comment_id IN ($placeholders) AND user_id=?");
+        $st->execute($params);
+        $liked = [];
+        while ($row = $st->fetch()) { $liked[$row['comment_id']] = true; }
+        return $liked;
+    }
+}
 function post_exists(string $postId): bool {
     if ($postId === '') {
         return false;
@@ -449,10 +514,10 @@ function post_exists(string $postId): bool {
 
 function comment_insert(array $c): void {
     $parent_id = !empty($c['parent_id']) ? $c['parent_id'] : null;
-    $st = db()->prepare('INSERT INTO cp_comments (id,post_id,nick,text,ip,user_id,parent_id,created_at) VALUES (?,?,?,?,?,?,?,?)');
+    $st = db()->prepare('INSERT INTO cp_comments (id,post_id,nick,text,voice,ip,user_id,parent_id,created_at) VALUES (?,?,?,?,?,?,?,?,?)');
     $st->execute([
         $c['id'], $c['post_id'], $c['nick'], $c['text'],
-        $c['ip'] ?? '', $c['user_id'] ?? null, $parent_id, $c['time'] ?? date('Y-m-d H:i:s'),
+        $c['voice'] ?? '', $c['ip'] ?? '', $c['user_id'] ?? null, $parent_id, $c['time'] ?? date('Y-m-d H:i:s'),
     ]);
 }
 
@@ -463,6 +528,18 @@ function comment_delete_by_index(int $idx): bool {
     }
     db()->prepare('DELETE FROM cp_comments WHERE id=?')->execute([$all[$idx]['id']]);
     return true;
+}
+
+function comment_delete_by_id(string $id): bool {
+    $st = db()->prepare('DELETE FROM cp_comments WHERE id=?');
+    $st->execute([$id]);
+    return $st->rowCount() > 0;
+}
+
+function comment_update(string $id, string $text): bool {
+    $st = db()->prepare('UPDATE cp_comments SET text=? WHERE id=?');
+    $st->execute([$text, $id]);
+    return $st->rowCount() > 0;
 }
 
 // ---------- Users ----------
