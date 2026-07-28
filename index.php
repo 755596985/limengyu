@@ -454,12 +454,26 @@ if (file_exists(__DIR__ . '/data/yiyan_config.json')) {
 echo json_encode($ycf['api_url'] ?? '/api.php');
 ?>;
 fetch(apiUrl)
-  .then(function(r){return r.json()})
-  .then(function(d){
-    if(d && d.code===1 && d.data){
-      var t=d.data.text||'';
-      var a=d.data.author||'';
-      var s=d.data.source||'';
+  .then(function(r){return r.text()})
+  .then(function(txt){
+    txt = (txt||'').trim();
+    if(!txt) return;
+    var t='', a='', s='';
+    try {
+      var d = JSON.parse(txt);
+      if (d && d.code===1 && d.data) {
+        t = d.data.text||''; a = d.data.author||''; s = d.data.source||'';
+      } else if (d && (d.hitokoto||d.text||d.content)) {
+        t = d.hitokoto||d.text||d.content||'';
+        a = d.from_who||d.author||'';
+        s = d.from||d.source||'';
+      } else {
+        t = txt;
+      }
+    } catch(e) {
+      t = txt;
+    }
+    if(t){
       document.getElementById('yiyan-text').textContent='\u201C'+t+'\u201D';
       document.getElementById('yiyan-author').textContent=(a?'\u2014\u2014 '+a:'')+(s?' ['+s+']':'');
     }
