@@ -12,9 +12,9 @@ if (!file_exists($dataFile)) {
     exit;
 }
 
-// data/yiyan.php 以 <?php exit;?> 开头防止直接访问，跳过第一行
+// data/yiyan.php 以 PHP exit 开头防止直接访问
 $lines = file($dataFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-array_shift($lines); // 移除 <?php exit;?>
+array_shift($lines);
 $content = implode("\n", $lines);
 
 $quotes = json_decode($content, true);
