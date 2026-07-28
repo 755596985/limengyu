@@ -1,40 +1,36 @@
 <?php
-header('Content-Type: text/plain; charset=utf-8');
-set_time_limit(120);
+/**
+ * 一言 API - 随机情话/句子
+ * 返回 JSON: {"code":1,"data":{"text":"...","author":"...","source":"..."}}
+ */
+header('Content-Type: application/json; charset=utf-8');
 
-$base = '/www/wwwroot/mnbt.205620724c';
-$src = "$base/couple_site";
-$ts = date('Ymd_His');
-$zipname = "backup_{$ts}.zip";
-$zipfile = "$base/$zipname";
+$dataFile = __DIR__ . '/data/yiyan.php';
 
-$out = [];
-
-$zip = new ZipArchive();
-if ($zip->open($zipfile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-    die("Cannot open zip: $zipfile");
+if (!file_exists($dataFile)) {
+    echo json_encode(['code' => 0, 'msg' => '数据文件不存在'], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-$files = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator($src, RecursiveDirectoryIterator::SKIP_DOTS),
-    RecursiveIteratorIterator::LEAVES_ONLY
-);
+// data/yiyan.php 以 <?php exit;?> 开头防止直接访问，跳过第一行
+$lines = file($dataFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+array_shift($lines); // 移除 <?php exit;?>
+$content = implode("\n", $lines);
 
-$count = 0;
-foreach ($files as $file) {
-    $filePath = $file->getRealPath();
-    $relativePath = 'couple_site/' . substr($filePath, strlen($src) + 1);
-    $zip->addFile($filePath, $relativePath);
-    $count++;
+$quotes = json_decode($content, true);
+
+if (!is_array($quotes) || empty($quotes)) {
+    echo json_encode(['code' => 0, 'msg' => '数据为空'], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-$zip->close();
+$quote = $quotes[array_rand($quotes)];
 
-if (file_exists($zipfile)) {
-    $size = filesize($zipfile);
-    echo "OK: $zipname\n";
-    echo "Size: $size bytes (" . round($size/1024, 1) . " KB)\n";
-    echo "Files: $count\n";
-} else {
-    echo "FAILED: zip not created\n";
-}
+echo json_encode([
+    'code' => 1,
+    'data' => [
+        'text'   => $quote['text'] ?? '',
+        'author' => $quote['author'] ?? '',
+        'source' => $quote['source'] ?? '',
+    ]
+], JSON_UNESCAPED_UNICODE);
