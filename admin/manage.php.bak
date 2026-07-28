@@ -1,0 +1,5 @@
+<?php
+require __DIR__ . '/../include/bootstrap.php';
+require_csrf();
+
+if (!isset($_SESSION['cp_admin

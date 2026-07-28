@@ -77,33 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $video = $video_url !== '' ? $video_url : handle_single_upload_db('video', $UPLOAD_DIR, $VID_EXT, $VID_MIME);
             $music_url = trim($_POST['music_url'] ?? '');
             $music = $music_url !== '' ? $music_url : handle_single_upload_db('music', $UPLOAD_DIR, $AUD_EXT, $AUD_MIME);
-            // 抖音链接解析
-            if (empty($video) && !empty($content)) {
-                if (preg_match('/(https?:\/\/(?:v\.douyin\.com\/[A-Za-z0-9-]+\/?(?:\?[^\s]*)?|www\.douyin\.com\/video\/\d+))/i', $content, $dm)) {
-                    $ch = curl_init($dm[1]);
-                    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_FOLLOWLOCATION=>true, CURLOPT_HEADER=>false, CURLOPT_NOBODY=>true, CURLOPT_TIMEOUT=>8, CURLOPT_USERAGENT=>'Mozilla/5.0']);
-                    curl_exec($ch);
-                    $final = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-                    curl_close($ch);
-                    if (preg_match('/(?:video|note)\/(\d+)/', $final, $vid)) {
-                        $dy_data = ['type'=>'douyin','video_id'=>$vid[1]];
-                        if (strpos($final, '/note/') !== false) {
-                            $dy_data['sub_type'] = 'note';
-                        } else {
-                            $dy_data['sub_type'] = 'video';
-                        }
-                        $ch2 = curl_init($dm[1]);
-                        curl_setopt_array($ch2, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_FOLLOWLOCATION=>true, CURLOPT_TIMEOUT=>8, CURLOPT_USERAGENT=>'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)']);
-                        $body = curl_exec($ch2);
-                        curl_close($ch2);
-                        if ($body && preg_match('/https?:\/\/[^\s]*douyinpic\.com[^\s]*\.(?:webp|jpg|jpeg|png)[^\s]*/i', $body, $img)) {
-                            $dy_data['cover'] = preg_replace('/\?.*$/', '', html_entity_decode($img[0], ENT_QUOTES));
-                        }
-                        $video = json_encode($dy_data, JSON_UNESCAPED_SLASHES);
-                    }
-                }
-            }
-
             $ip = client_ip();
             $location = $manual_location !== '' ? $manual_location : resolve_location($ip);
             if ($id !== '') {
@@ -292,15 +265,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($_POST['avatar_color'])) $fields['avatar_color'] = trim($_POST['avatar_color']);
         if (isset($_POST['status'])) $fields['status'] = in_array($_POST['status'], ['active','inactive','banned']) ? $_POST['status'] : 'active';
         // 头像上传
-        if (!empty($_FILES['edit_avatar']['tmp_name'])) {
-            $av = safe_upload_one('edit_avatar', $UPLOAD_DIR, ['jpg','jpeg','png','gif','webp'], ['image/jpeg','image/png','image/gif','image/webp']);
-            if ($av) {
-                $ou = user_by_id($uid);
-                if ($ou && !empty($ou['avatar']) && $ou['avatar'] !== $av) {
-                    safe_unlink_under($ROOT, $ou['avatar']);
-                }
-                $fields['avatar'] = $av;
+        $avatar = handle_single_upload_db('user_avatar', $UPLOAD_DIR, $IMG_EXT, $IMG_MIME);
+        if ($avatar) {
+            $oldUser = user_by_id($uid);
+            if ($oldUser && !empty($oldUser['avatar'])) {
+                safe_unlink_under($ROOT, $oldUser['avatar']);
             }
+            $fields['avatar'] = $avatar;
+        }
+        // 密码修改
+        $newPassword = trim($_POST['password'] ?? '');
+        if ($newPassword !== '') {
+            $fields['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
         }
         if (!empty($fields) && $uid) {
             user_update($uid, $fields);
@@ -715,15 +691,18 @@ function editUser(uid) {
     document.getElementById('edit_nickname').value = user.nickname || '';
     document.getElementById('edit_email').value = user.email || '';
     document.getElementById('edit_status').value = user.status || 'active';
-    // Set avatar preview
-    var avPreview = document.getElementById('edit_avatar_preview');
+    
+    // 头像预览
+    var avatarPreview = document.getElementById('edit_avatar_preview');
     if (user.avatar) {
-        avPreview.src = user.avatar;
-        avPreview.style.display = 'block';
+        avatarPreview.src = '../' + user.avatar;
+        avatarPreview.style.display = 'inline-block';
     } else {
-        avPreview.style.display = 'none';
+        avatarPreview.style.display = 'none';
     }
-
+    // 清空密码字段
+    document.getElementById('edit_password').value = '';
+    
     // Set color picker
     var color = user.avatar_color || '#d4786e';
     var dots = document.querySelectorAll('#colorPicker input[type=radio]');
@@ -732,17 +711,6 @@ function editUser(uid) {
     }
     
     document.getElementById('userModal').style.display = 'flex';
-}
-function previewAvatar(input) {
-    if (input.files && input.files[0]) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            var p = document.getElementById('edit_avatar_preview');
-            p.src = e.target.result;
-            p.style.display = 'block';
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
 }
 function closeUserModal() {
     document.getElementById('userModal').style.display = 'none';
@@ -997,7 +965,6 @@ $statusLabel = ['active'=>'正常','inactive'=>'停用','banned'=>'封禁'];
 $statusClass = ['active'=>'badge-green','inactive'=>'badge-yellow','banned'=>'badge-red'];
 $s = $u['status'] ?? 'active';
 $avatarColor = $u['avatar_color'] ?? '#d4786e';
-$avatarUrl = !empty($u['avatar']) ? htmlspecialchars($u['avatar']) : '';
 $nick = htmlspecialchars($u['nickname'] ?? $u['username']);
 $uname = htmlspecialchars($u['username']);
 $uid = $u['id'];
@@ -1007,7 +974,7 @@ $email = htmlspecialchars($u['email'] ?? '');
 $time = htmlspecialchars($u['created_at'] ?? '—');
 ?>
 <tr>
-<td data-label="用户信息"><?php if ($avatarUrl): ?><img src="<?php echo $avatarUrl;?>" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;"><?php else: ?><span class="avatar-dot" style="background:<?php echo $avatarColor;?>"></span><?php endif; ?><span><?php echo $nick;?> <span class="user-at">@<?php echo $uname;?></span></span></td>
+<td data-label="用户信息"><?php if(!empty($u['avatar'])):?><img src="../<?php echo htmlspecialchars($u['avatar']);?>" style="width:22px;height:22px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;box-shadow:0 2px 6px rgba(0,0,0,.12);flex-shrink:0"><?php else:?><span class="avatar-dot" style="background:<?php echo $avatarColor;?>"></span><?php endif;?><span><?php echo $nick;?> <span class="user-at">@<?php echo $uname;?></span></span></td>
 <td data-label="IP"><?php echo $ip;?></td>
 <td data-label="归属地"><?php echo $loc;?></td>
 <td data-label="注册时间"><?php echo $time;?></td>
@@ -1029,13 +996,17 @@ $time = htmlspecialchars($u['created_at'] ?? '—');
 <div class="modal-overlay" id="userModal" style="display:none">
 <div class="modal-box">
 <div class="modal-header"><span class="modal-title">✏️ 编辑用户</span><button type="button" class="modal-close" onclick="closeUserModal()">✕</button></div>
-<form method="post" id="userEditForm">
+<form method="post" id="userEditForm" enctype="multipart/form-data">
 <?php echo csrf_field();?>
 <input type="hidden" name="act" value="user_edit">
 <input type="hidden" name="uid" id="edit_uid">
 <div class="fg"><label>👤 昵称</label><input type="text" name="nickname" id="edit_nickname" class="neo" placeholder="用户昵称" required></div>
 <div class="fg"><label>📧 邮箱</label><input type="email" name="email" id="edit_email" class="neo" placeholder="email@example.com"></div>
-<div class="fg"><label>🖼️ 头像</label><div style="display:flex;align-items:center;gap:12px"><img id="edit_avatar_preview" src="" style="width:50px;height:50px;border-radius:50%;object-fit:cover;background:var(--bg);display:none;"><input type="file" name="edit_avatar" accept="image/*" onchange="previewAvatar(this)" style="flex:1"></div></div>
+<div class="fg"><label>🖼️ 头像</label>
+<div style="margin-bottom:8px"><img id="edit_avatar_preview" src="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;display:none;box-shadow:0 2px 8px rgba(0,0,0,.15)"></div>
+<input type="file" name="user_avatar" accept="image/*" style="font-size:.82em">
+<div style="font-size:.7em;color:var(--tl);margin-top:2px">不选则保持原头像</div></div>
+<div class="fg"><label>🔒 新密码</label><input type="password" name="password" id="edit_password" class="neo" placeholder="留空则不修改密码" autocomplete="new-password"></div>
 <div class="fg"><label>🎨 头像颜色</label>
 <div class="color-picker" id="colorPicker">
 <?php $colors=['#d4786e','#e8857c','#f0a89e','#e8618c','#c06a9e','#9b6db5','#7e8cc4','#5b9ecf','#4cb8b0','#5cb85c','#9acd32','#f0ad4e','#e67e22','#95a5a6']; foreach($colors as $c):?>

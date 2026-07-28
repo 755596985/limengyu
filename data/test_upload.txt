@@ -1,0 +1,10 @@
+<?php
+require dirname(__DIR__) . '/include/bootstrap.php';
+// 测试 users_all
+$users = users_all();
+echo "users_all count: " . count($users) . "\n";
+if (!empty($users)) {
+    echo "First user keys: " . implode(", ", array_keys($users[0])) . "\n";
+    echo "Sample: " . json_encode(array_slice($users[0], 0, 5), JSON_UNESCAPED_UNICODE) . "\n";
+}
+echo "OK\n";

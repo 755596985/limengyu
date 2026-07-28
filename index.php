@@ -170,33 +170,12 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me) {
     foreach ($CM as $c) { if (($c['post_id'] ?? '') === $pid) $postComments[] = $c; }
     $cc = count($postComments);
     $o = '<div class="ncs pc">';
-    $o .= '<div class="ph"><div class="pa"'.($isUserPost?' style="background:'.htmlspecialchars($po['user_color']??'#d4786e').'"':'').'>'.AV($pav,$pem).'</div><div class="pi"><div class="name"'.($pcolor?' style="color:'.$pcolor.'"':'').'>'.$pname.'</div><div class="time">'.htmlspecialchars($po['time']).(!empty($po['location'])&&$po['location']!=='未知'?' · 📍 '.htmlspecialchars($po['location']):'').($isUserPost?' · 👤 用户':'').'</div></div><div class="pm">'.htmlspecialchars($po['mood']??'💕').'</div></div>';
+    $o .= '<div class="ph"><div class="pa"'.($isUserPost?' style="background:'.htmlspecialchars($po['user_color']??'#d4786e').'"':'').'>'.($isUserPost?'<a href="user.php?id='.htmlspecialchars($po['user_id']).'">':'').AV($pav,$pem).($isUserPost?'</a>':'').'</div><div class="pi"><div class="name"'.($pcolor?' style="color:'.$pcolor.'"':'').'>'.($isUserPost?'<a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="color:var(--tx);text-decoration:none">':'').$pname.($isUserPost?'</a>':'').'</div><div class="time">'.htmlspecialchars($po['time']).(!empty($po['location'])&&$po['location']!=='未知'?' · 📍 '.htmlspecialchars($po['location']):'').($isUserPost?' · 👤 <a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="color:var(--tl);text-decoration:none">用户</a>':'').'</div></div><div class="pm">'.htmlspecialchars($po['mood']??'💕').'</div></div>';
     if(!empty($po['title'])) $o .= '<div class="ptitle">'.htmlspecialchars($po['title']).'</div>';
     $o .= '<div class="pb">'.nl2br(htmlspecialchars($po['content'])).'</div>';
     if(!empty($po['tags'])) { $o .= '<div class="ptags">'; foreach($po['tags'] as $t) $o .= '<span class="tag">#'.htmlspecialchars($t).'</span>'; $o .= '</div>'; }
     if(!empty($po['images'])) { $o .= '<div class="pimgs '.((count($po['images'])===1)?'c1':((count($po['images'])===2)?'c2':'')).'">'; foreach($po['images'] as $im) $o .= '<img src="'.htmlspecialchars($im).'" onclick="l(\''.htmlspecialchars($im,ENT_QUOTES).'\')" loading="lazy">'; $o .= '</div>'; }
-    if(!empty($po['video'])) {
-        $vd = json_decode($po['video'], true);
-        if ($vd && isset($vd['type']) && $vd['type']==='douyin' && !empty($vd['video_id'])) {
-            $o .= '<div class="pvideo">';
-            if (($vd['sub_type'] ?? 'video') === 'video') {
-                $o .= '<div style="width:100%;max-width:500px;margin:10px auto;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9;max-height:300px;"><iframe src="https://open.douyin.com/player/video?vid='.htmlspecialchars($vd['video_id']).'" style="width:100%;height:100%;border:0;display:block;" allowfullscreen allow="autoplay;encrypted-media;picture-in-picture" loading="lazy"></iframe></div>';
-            } else {
-                $cover = !empty($vd['cover']) ? htmlspecialchars($vd['cover']) : '';
-                $dy_url = 'https://www.douyin.com/note/'.htmlspecialchars($vd['video_id']);
-                $o .= '<a href="'.$dy_url.'" target="_blank" rel="noopener noreferrer" class="dy-card" style="display:block;position:relative;border-radius:var(--rx);overflow:hidden;text-decoration:none;aspect-ratio:16/9;background:linear-gradient(135deg,#111 0%,#1a1a1a 50%,#0a0a0a 100%)">';
-                if ($cover) $o .= '<img src="'.$cover.'" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.85" loading="lazy" onerror="this.style.display=\'none\'">';
-                $o .= '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.1) 60%,rgba(0,0,0,0.3) 100%)"></div>';
-                $o .= '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.15);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.3)"><svg viewBox="0 0 24 24" width="22" height="22" fill="white"><path d="M9.5 6.5v11l8.5-5.5z"/></svg></div>';
-                $o .= '<span style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);color:#fff;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500">抖音图文</span>';
-                $o .= '<span style="position:absolute;bottom:14px;left:14px;right:14px;color:#fff;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.5)">在抖音查看</span>';
-                $o .= '</a>';
-            }
-            $o .= '</div>';
-        } else {
-            $o .= '<div class="pvideo"><video src="'.htmlspecialchars($po['video']).'" controls preload="metadata" style="width:100%;max-height:400px;border-radius:var(--rx)">您的浏览器不支持视频播放</video></div>';
-        }
-    }
+    if(!empty($po['video'])) { $o .= '<div class="pvideo"><video src="'.htmlspecialchars($po['video']).'" controls preload="metadata" style="width:100%;max-height:400px;border-radius:var(--rx)">您的浏览器不支持视频播放</video></div>'; }
     if(!empty($po['music'])) { $o .= '<div class="pmusic"><audio src="'.htmlspecialchars($po['music']).'" controls preload="metadata" style="width:100%">您的浏览器不支持音频播放</audio></div>'; }
     // Comments section with reply support
     $o .= '<div class="cmts">';
