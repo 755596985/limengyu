@@ -951,6 +951,8 @@ function switchReward(k){
 <div class="ft">
 <p><?php echo beian_render($bn); ?></p>
 <?php if (!empty($C['footer'])): ?><p><?php echo md_render($C['footer']); ?></p><?php endif; ?>
+<!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
+<p>© 2026 情侣小窝 · <a href="https://github.com/755596985/limengyu">开源版</a></p>
 </div>
 </div>
 
