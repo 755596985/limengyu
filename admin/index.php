@@ -69,6 +69,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <button type="submit" class="btn">登 录</button></form>
 <a href="../" class="back">← 返回首页</a>
 <p style="margin-top:16px;font-size:.72em;color:var(--tl)">首次登录后请及时修改默认密码</p>
+<!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
+<p style="text-align:center;margin:16px 0 0;padding-top:12px;border-top:1px dashed rgba(127,127,127,.18);font-size:.72em;color:var(--tl)">© 2026 情侣小窝 · <a href="https://github.com/755596985/limengyu" style="color:inherit">开源版</a></p>
 </div>
 <script>
 // 主题切换（奶白/黑夜，与前台共用 localStorage）
