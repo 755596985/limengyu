@@ -162,13 +162,36 @@ function insertPostImageUrl() {
 </form>
 </div>
 <div class="card"><div class="card-title"><?php echo m_ico_badge('list'); ?>说说列表 (<?php echo count($posts);?>)</div>
+<style>
+.post-card-item{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
+.post-card-item:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-1px)}
+.post-card-item .item-info{flex:1;min-width:0}
+.post-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.post-mood{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:1.15em;background:var(--prisoft);border-radius:50%;flex-shrink:0}
+.post-actor{font-size:.8em;font-weight:700;color:var(--pri);background:var(--prisoft);padding:3px 10px;border-radius:20px;letter-spacing:1px}
+.post-when{font-size:.72em;color:var(--tl)}
+.post-where{font-size:.72em;color:var(--tl)}
+.post-title{font-size:1em;font-weight:800;color:var(--tx);margin-bottom:4px}
+.post-excerpt{font-size:.88em;color:var(--tl);line-height:1.6;word-break:break-word;margin-bottom:6px}
+.post-card-item .tag-badge{margin-top:2px}
+.post-card-item .item-imgs{margin-top:8px;gap:6px}
+.post-card-item .item-imgs img{width:64px;height:64px;object-fit:cover;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.post-card-item .btn.small{min-height:32px;padding:6px 12px;border-radius:8px}
+.post-card-item video,.post-card-item audio{border-radius:10px}
+@media(max-width:600px){.post-card-item{padding:12px 14px}.post-card-item .item-imgs img{width:56px;height:56px}}
+</style>
 <?php if(empty($posts)):?><p style="text-align:center;color:var(--tl);padding:30px">还没有说说~</p>
 <?php else: foreach($posts as $i=>$po):?>
-<div class="list-item">
-<div style="font-size:1.5em"><?php echo ($po['author']??'1')==='1'?'👦':'👧';?></div>
+<div class="post-card-item">
 <div class="item-info">
-<div class="item-title"><?php echo htmlspecialchars($po['mood']??'💕');?> <?php if(!empty($po['title'])):?><span style="color:var(--pri)"><?php echo htmlspecialchars($po['title']);?></span> — <?php endif;?><?php echo htmlspecialchars(mb_substr($po['content'],0,40));?><?php echo mb_strlen($po['content'])>40?'…':'';?></div>
-<div class="item-meta"><?php echo htmlspecialchars(($po['author']??'1')==='1'?$n1:$n2);?> · <?php echo htmlspecialchars($po['time']);?><?php if (!empty($po['location']) && $po['location'] !== '未知'): ?> · 📍 <?php echo htmlspecialchars($po['location']); ?><?php endif; ?></div>
+<div class="post-head">
+<span class="post-mood"><?php echo htmlspecialchars($po['mood']??'💕');?></span>
+<span class="post-actor"><?php echo htmlspecialchars(($po['author']??'1')==='1'?$n1:$n2);?></span>
+<span class="post-when"><?php echo htmlspecialchars($po['time']);?></span>
+<?php if (!empty($po['location']) && $po['location'] !== '未知'): ?><span class="post-where">📍 <?php echo htmlspecialchars($po['location']); ?></span><?php endif; ?>
+</div>
+<?php if(!empty($po['title'])):?><div class="post-title"><?php echo htmlspecialchars($po['title']);?></div><?php endif;?>
+<div class="post-excerpt"><?php echo htmlspecialchars(mb_substr($po['content'],0,60));?><?php echo mb_strlen($po['content'])>60?'…':'';?></div>
 <?php if(!empty($po['tags'])):?><div><?php foreach($po['tags'] as $t):?><span class="tag-badge">#<?php echo htmlspecialchars($t);?></span><?php endforeach;?></div><?php endif;?>
 <?php if(!empty($po['images'])):?><div class="item-imgs"><?php foreach($po['images'] as $im):?><?php $is_url = preg_match('#^https?://#i', $im); $img_src = $is_url ? htmlspecialchars($im) : '../'.htmlspecialchars($im); $open_src = $is_url ? htmlspecialchars($im) : '../'.htmlspecialchars($im);?><img src="<?php echo $img_src;?>" onclick="event.stopPropagation();window.open('<?php echo $open_src;?>')" style="cursor:pointer"><?php endforeach;?></div><?php endif;?>
 <?php if(!empty($po['video'])):?><?php $is_vurl = preg_match('#^https?://#i', $po['video']); if($is_vurl):?><div style="margin-top:4px"><video src="<?php echo htmlspecialchars($po['video']);?>" controls style="max-width:100%;max-height:120px;border-radius:8px"></video></div><?php else:?><div style="margin-top:4px;font-size:.78em;color:var(--tl)"><span class="lbl-ico"><?php echo m_ico("video", 15); ?></span> 含有视频</div><?php endif;?><?php endif;?>
