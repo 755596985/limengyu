@@ -163,25 +163,26 @@ function insertPostImageUrl() {
 </div>
 <div class="card"><div class="card-title"><?php echo m_ico_badge('list'); ?>说说列表 (<?php echo count($posts);?>)</div>
 <style>
-.post-card-item{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
+.post-card-item{display:block;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
 .post-card-item:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-1px)}
+.post-headrow{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .post-avatar{width:46px;height:46px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--pri),var(--prisoft));box-shadow:0 2px 8px rgba(0,0,0,.08);border:2px solid var(--card)}
 .post-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
 .post-avatar .post-avatar-emoji{font-size:1.4em;line-height:1;position:relative;z-index:0}
-.post-card-item .item-info{flex:1;min-width:0}
-.post-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-bottom:7px;padding-top:2px}
-.post-mood{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1em;background:var(--prisoft);border-radius:50%;flex-shrink:0;margin-left:auto}
+.post-meta{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}
+.post-mood{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1em;background:var(--prisoft);border-radius:50%;flex-shrink:0}
 .post-actor{font-size:.78em;font-weight:700;color:var(--pri);background:var(--prisoft);padding:3px 11px;border-radius:20px;letter-spacing:1px;white-space:nowrap}
 .post-when{font-size:.74em;color:var(--tl);white-space:nowrap}
 .post-where{font-size:.74em;color:var(--tl);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:2px}
-.post-title{font-size:1em;font-weight:800;color:var(--tx);margin-bottom:4px;word-break:break-word}
-.post-excerpt{font-size:.88em;color:var(--tl);line-height:1.6;word-break:break-word;margin-bottom:6px}
+.post-title{font-size:1em;font-weight:800;color:var(--tx);margin-bottom:5px;word-break:break-word}
+.post-excerpt{font-size:.88em;color:var(--tl);line-height:1.65;word-break:break-word;margin-bottom:6px}
 .post-card-item .tag-badge{margin-top:2px}
 .post-card-item .item-imgs{margin-top:8px;gap:6px}
-.post-card-item .item-imgs img{width:64px;height:64px;object-fit:cover;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.post-card-item .btn.small{min-height:32px;padding:6px 12px;border-radius:8px}
+.post-card-item .item-imgs img{width:68px;height:68px;object-fit:cover;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .post-card-item video,.post-card-item audio{border-radius:10px}
-@media(max-width:600px){.post-card-item{padding:12px 14px;gap:11px}.post-avatar{width:40px;height:40px}.post-where{max-width:110px}.post-card-item .item-imgs img{width:56px;height:56px}}
+.post-footrow{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;padding-top:9px;border-top:1px dashed var(--line)}
+.post-footrow .btn.small{min-height:32px;padding:6px 14px;border-radius:8px}
+@media(max-width:600px){.post-card-item{padding:12px 14px}.post-headrow{gap:10px;margin-bottom:8px}.post-avatar{width:40px;height:40px}.post-where{max-width:110px}.post-card-item .item-imgs img{width:56px;height:56px}.post-footrow .btn.small{min-height:40px}}
 </style>
 <?php if(empty($posts)):?><p style="text-align:center;color:var(--tl);padding:30px">还没有说说~</p>
 <?php else: foreach($posts as $i=>$po):?>
@@ -190,22 +191,22 @@ if($isUserPost){ $pUrl=$po['user_avatar']??''; $pEmoji='👤'; $pBg=$po['user_av
 else { $pUrl=($pAuthor==='1'?$av1:$av2); $pEmoji=($pAuthor==='1'?'👦':'👧'); }
 $avatar_src = ($pUrl!=='' && preg_match('#^https?://#i',$pUrl)) ? htmlspecialchars($pUrl) : htmlspecialchars('../'.ltrim($pUrl,'/')); ?>
 <div class="post-card-item">
+<div class="post-headrow">
 <?php if($pUrl): ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><img src="<?php echo $avatar_src;?>" onerror="this.remove()" alt=""><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php else: ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php endif; ?>
-<div class="item-info">
-<div class="post-head">
+<div class="post-meta">
 <span class="post-actor"><?php echo htmlspecialchars($isUserPost?($po['user_nick']??'用户'):($pAuthor==='1'?$n1:$n2));?></span>
 <span class="post-when"><?php echo htmlspecialchars($po['time']);?></span>
 <?php if (!empty($po['location']) && $po['location'] !== '未知'): ?><span class="post-where">📍 <?php echo htmlspecialchars($po['location']); ?></span><?php endif; ?>
+</div>
 <span class="post-mood" title="心情"><?php echo htmlspecialchars($po['mood']??'💕');?></span>
 </div>
 <?php if(!empty($po['title'])):?><div class="post-title"><?php echo htmlspecialchars($po['title']);?></div><?php endif;?>
-<div class="post-excerpt"><?php echo htmlspecialchars(mb_substr($po['content'],0,60));?><?php echo mb_strlen($po['content'])>60?'…':'';?></div>
+<div class="post-excerpt"><?php echo htmlspecialchars(mb_substr($po['content'],0,90));?><?php echo mb_strlen($po['content'])>90?'…':'';?></div>
 <?php if(!empty($po['tags'])):?><div><?php foreach($po['tags'] as $t):?><span class="tag-badge">#<?php echo htmlspecialchars($t);?></span><?php endforeach;?></div><?php endif;?>
 <?php if(!empty($po['images'])):?><div class="item-imgs"><?php foreach($po['images'] as $im):?><?php $is_url = preg_match('#^https?://#i', $im); $img_src = $is_url ? htmlspecialchars($im) : '../'.htmlspecialchars($im); $open_src = $is_url ? htmlspecialchars($im) : '../'.htmlspecialchars($im);?><img src="<?php echo $img_src;?>" onclick="event.stopPropagation();window.open('<?php echo $open_src;?>')" style="cursor:pointer"><?php endforeach;?></div><?php endif;?>
 <?php if(!empty($po['video'])):?><?php $is_vurl = preg_match('#^https?://#i', $po['video']); if($is_vurl):?><div style="margin-top:4px"><video src="<?php echo htmlspecialchars($po['video']);?>" controls style="max-width:100%;max-height:120px;border-radius:8px"></video></div><?php else:?><div style="margin-top:4px;font-size:.78em;color:var(--tl)"><span class="lbl-ico"><?php echo m_ico("video", 15); ?></span> 含有视频</div><?php endif;?><?php endif;?>
 <?php if(!empty($po['music'])):?><?php $is_murl = preg_match('#^https?://#i', $po['music']); if($is_murl):?><div style="margin-top:4px"><audio src="<?php echo htmlspecialchars($po['music']);?>" controls style="width:100%;height:32px"></audio></div><?php else:?><div style="margin-top:4px;font-size:.78em;color:var(--tl)"><span class="lbl-ico"><?php echo m_ico("music", 15); ?></span> 含有音乐</div><?php endif;?><?php endif;?>
-</div>
-<div style="flex-shrink:0;display:flex;gap:6px">
+<div class="post-footrow">
 <button type="button" class="btn small primary" onclick='editPost(<?php echo $i;?>,<?php echo json_encode($po['mood']??'💕');?>,<?php echo json_encode($po['content']);?>,<?php echo json_encode($po['author']??'1');?>,<?php echo json_encode(substr($po['time'],0,10));?>,<?php echo json_encode(substr($po['time'],11,5));?>,<?php echo json_encode($po['location']??'');?>,<?php echo json_encode($po['title']??'');?>,<?php echo json_encode(isset($po['tags'])?implode(', ',$po['tags']):'');?>,<?php $poImages = $po['images'] ?? []; $poImageUrls = array_filter($poImages, function($i){return preg_match('#^https?://#i',$i);}); echo json_encode($poImageUrls ? implode(', ',$poImageUrls):'');?>,<?php echo json_encode(!empty($po['video'])?basename($po['video']):'');?>,<?php $poVid = $po['video'] ?? ''; echo json_encode(preg_match('#^https?://#i',$poVid) ? $poVid : '');?>,<?php echo json_encode(!empty($po['music'])?basename($po['music']):'');?>,<?php $poMus = $po['music'] ?? ''; echo json_encode(preg_match('#^https?://#i',$poMus) ? $poMus : '');?>)' title="编辑"><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span></button>
 <form method="post" onsubmit="return confirm('确定删除？')" style="display:inline"><?php echo csrf_field(); ?><input type="hidden" name="act" value="delete_post"><input type="hidden" name="id" value="<?php echo $i;?>"><button type="submit" class="btn small danger">删除</button></form>
 </div>
