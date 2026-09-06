@@ -165,30 +165,37 @@ function insertPostImageUrl() {
 <style>
 .post-card-item{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
 .post-card-item:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-1px)}
+.post-avatar{width:46px;height:46px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--pri),var(--prisoft));box-shadow:0 2px 8px rgba(0,0,0,.08);border:2px solid var(--card)}
+.post-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
+.post-avatar .post-avatar-emoji{font-size:1.4em;line-height:1;position:relative;z-index:0}
 .post-card-item .item-info{flex:1;min-width:0}
-.post-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
-.post-mood{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:1.15em;background:var(--prisoft);border-radius:50%;flex-shrink:0}
-.post-actor{font-size:.8em;font-weight:700;color:var(--pri);background:var(--prisoft);padding:3px 10px;border-radius:20px;letter-spacing:1px}
-.post-when{font-size:.72em;color:var(--tl)}
-.post-where{font-size:.72em;color:var(--tl)}
-.post-title{font-size:1em;font-weight:800;color:var(--tx);margin-bottom:4px}
+.post-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-bottom:7px;padding-top:2px}
+.post-mood{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1em;background:var(--prisoft);border-radius:50%;flex-shrink:0;margin-left:auto}
+.post-actor{font-size:.78em;font-weight:700;color:var(--pri);background:var(--prisoft);padding:3px 11px;border-radius:20px;letter-spacing:1px;white-space:nowrap}
+.post-when{font-size:.74em;color:var(--tl);white-space:nowrap}
+.post-where{font-size:.74em;color:var(--tl);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:2px}
+.post-title{font-size:1em;font-weight:800;color:var(--tx);margin-bottom:4px;word-break:break-word}
 .post-excerpt{font-size:.88em;color:var(--tl);line-height:1.6;word-break:break-word;margin-bottom:6px}
 .post-card-item .tag-badge{margin-top:2px}
 .post-card-item .item-imgs{margin-top:8px;gap:6px}
 .post-card-item .item-imgs img{width:64px;height:64px;object-fit:cover;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .post-card-item .btn.small{min-height:32px;padding:6px 12px;border-radius:8px}
 .post-card-item video,.post-card-item audio{border-radius:10px}
-@media(max-width:600px){.post-card-item{padding:12px 14px}.post-card-item .item-imgs img{width:56px;height:56px}}
+@media(max-width:600px){.post-card-item{padding:12px 14px;gap:11px}.post-avatar{width:40px;height:40px}.post-where{max-width:110px}.post-card-item .item-imgs img{width:56px;height:56px}}
 </style>
 <?php if(empty($posts)):?><p style="text-align:center;color:var(--tl);padding:30px">还没有说说~</p>
 <?php else: foreach($posts as $i=>$po):?>
+<?php $isUserPost = !empty($po['user_id']); $pAuthor = ($po['author']??'1'); $pUrl=''; $pEmoji=''; $pBg='';
+if($isUserPost){ $pUrl=$po['user_avatar']??''; $pEmoji='👤'; $pBg=$po['user_avatar_color']??$po['user_color']??'#888'; }
+else { $pUrl=($pAuthor==='1'?$av1:$av2); $pEmoji=($pAuthor==='1'?'👦':'👧'); } ?>
 <div class="post-card-item">
+<?php if($pUrl): ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><img src="<?php echo htmlspecialchars($pUrl);?>" onerror="this.remove()" alt=""><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php else: ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php endif; ?>
 <div class="item-info">
 <div class="post-head">
-<span class="post-mood"><?php echo htmlspecialchars($po['mood']??'💕');?></span>
-<span class="post-actor"><?php echo htmlspecialchars(($po['author']??'1')==='1'?$n1:$n2);?></span>
+<span class="post-actor"><?php echo htmlspecialchars($isUserPost?($po['user_nick']??'用户'):($pAuthor==='1'?$n1:$n2));?></span>
 <span class="post-when"><?php echo htmlspecialchars($po['time']);?></span>
 <?php if (!empty($po['location']) && $po['location'] !== '未知'): ?><span class="post-where">📍 <?php echo htmlspecialchars($po['location']); ?></span><?php endif; ?>
+<span class="post-mood" title="心情"><?php echo htmlspecialchars($po['mood']??'💕');?></span>
 </div>
 <?php if(!empty($po['title'])):?><div class="post-title"><?php echo htmlspecialchars($po['title']);?></div><?php endif;?>
 <div class="post-excerpt"><?php echo htmlspecialchars(mb_substr($po['content'],0,60));?><?php echo mb_strlen($po['content'])>60?'…':'';?></div>
