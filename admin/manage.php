@@ -14,7 +14,6 @@ $photos = photos_all();
 $pages    = pages_all();
 $comments = comments_all();
 $users    = users_all();
-$about    = get_about();
 $admin_saved = admin_get();
 $filter_words = filter_words_get();
 $visitors = visitors_get();
