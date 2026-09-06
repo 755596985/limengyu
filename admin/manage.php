@@ -6,24 +6,55 @@ if (!isset($_SESSION['cp_admin'])) { header('Location: index.php'); exit; }
 $ROOT = dirname(__DIR__);
 $UPLOAD_DIR = $ROOT . '/uploads/';
 
+$tab = $_GET['tab'] ?? 'posts';
+
 $config = get_config();
-$posts  = posts_all();
-$places = places_all();
-$todos  = todos_all();
-$photos = photos_all();
-$pages    = pages_all();
-$comments = comments_all();
-$users    = users_all();
-$admin_saved = admin_get();
-$filter_words = filter_words_get();
-$visitors = visitors_get();
+
+// ===== 数据按需加载：仅加载当前 tab 需要的表，避免打开后台每次都全量查询拖慢页面 =====
+$posts = $places = $todos = $photos = $pages = $comments = $users = [];
+$admin_saved = [];
+$filter_words = [];
+switch ($tab) {
+    case 'posts':
+        $posts = posts_all();
+        break;
+    case 'album':
+        $photos = photos_all();
+        break;
+    case 'places':
+        $places = places_all();
+        break;
+    case 'todos':
+        $todos = todos_all();
+        break;
+    case 'pages':
+        $pages = pages_all();
+        break;
+    case 'comments':
+        $comments = comments_all();
+        $posts = posts_all(); // 留言列表需展示关联说说摘要
+        break;
+    case 'users':
+        $users = users_all();
+        break;
+    case 'password':
+        $admin_saved = admin_get();
+        break;
+    case 'filter':
+        $filter_words = filter_words_get();
+        break;
+    case 'ai':
+        // AI 模块渲染不依赖全表数据，内部自行统计，无需预取
+        break;
+    default:
+        break;
+}
 
 $n1 = $config['name1'] ?? '男神';
 $n2 = $config['name2'] ?? '女神';
 $av1 = $config['avatar1'] ?? '';
 $av2 = $config['avatar2'] ?? '';
 
-$tab = $_GET['tab'] ?? 'posts';
 $message = $error = '';
 
 $IMG_EXT = ['jpg','jpeg','png','gif','webp'];
@@ -373,6 +404,17 @@ document.getElementById('userModal') && document.getElementById('userModal').add
 </head>
 <body>
 <button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;transition:transform .2s"><?php echo m_ico('moon',17); ?></button>
+
+<?php // 导航栏前置到 body 顶部：fixed 视觉位置不变，但可先于页面内容输出，配合下方 flush 让导航栏立即呈现 ?>
+<div class="bnav">
+<?php foreach ($MODULES as $mod): ?>
+<a href="?tab=<?php echo $mod['key']; ?>" class="<?php echo $tab === $mod['key'] ? 'active' : ''; ?>"><span class="ni"><?php echo m_ico($mod['icon'], 20); ?></span><span class="nl"><?php echo $mod['label']; ?></span></a>
+<?php endforeach; ?>
+<a href="yiyan.php"><span class="ni"><?php echo m_ico('quote', 20); ?></span><span class="nl">一言</span></a>
+<a href="../"><span class="ni"><?php echo m_ico('home', 20); ?></span><span class="nl">前台</span></a>
+<a href="?logout=1"><span class="ni"><?php echo m_ico('logout', 20); ?></span><span class="nl">退出</span></a>
+</div>
+<?php if (ob_get_level()) { ob_flush(); } flush(); ?>
 <div class="main">
 <?php if ($message): ?><div class="msg success"><?php echo m_ico('check',16); ?> <span><?php echo htmlspecialchars($message); ?></span></div><?php endif; ?>
 <?php if ($error): ?><div class="msg error"><?php echo m_ico('alert',16); ?> <span><?php echo htmlspecialchars($error); ?></span></div><?php endif; ?>
@@ -390,15 +432,6 @@ unset($MOD_RUN);
 <!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
 <div style="text-align:center;margin-top:20px;padding-top:12px;border-top:1px dashed rgba(127,127,127,.18);font-size:.72em;color:var(--tl)">© 2026 情侣小窝 · <a href="https://github.com/755596985/limengyu" style="color:inherit;text-decoration:none">开源版</a></div>
 
-</div>
-
-<div class="bnav">
-<?php foreach ($MODULES as $mod): ?>
-<a href="?tab=<?php echo $mod['key']; ?>" class="<?php echo $tab === $mod['key'] ? 'active' : ''; ?>"><span class="ni"><?php echo m_ico($mod['icon'], 20); ?></span><span class="nl"><?php echo $mod['label']; ?></span></a>
-<?php endforeach; ?>
-<a href="yiyan.php"><span class="ni"><?php echo m_ico('quote', 20); ?></span><span class="nl">一言</span></a>
-<a href="../"><span class="ni"><?php echo m_ico('home', 20); ?></span><span class="nl">前台</span></a>
-<a href="?logout=1"><span class="ni"><?php echo m_ico('logout', 20); ?></span><span class="nl">退出</span></a>
 </div>
 
 <script>
