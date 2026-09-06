@@ -187,9 +187,10 @@ function insertPostImageUrl() {
 <?php else: foreach($posts as $i=>$po):?>
 <?php $isUserPost = !empty($po['user_id']); $pAuthor = ($po['author']??'1'); $pUrl=''; $pEmoji=''; $pBg='';
 if($isUserPost){ $pUrl=$po['user_avatar']??''; $pEmoji='👤'; $pBg=$po['user_avatar_color']??$po['user_color']??'#888'; }
-else { $pUrl=($pAuthor==='1'?$av1:$av2); $pEmoji=($pAuthor==='1'?'👦':'👧'); } ?>
+else { $pUrl=($pAuthor==='1'?$av1:$av2); $pEmoji=($pAuthor==='1'?'👦':'👧'); }
+$avatar_src = ($pUrl!=='' && preg_match('#^https?://#i',$pUrl)) ? htmlspecialchars($pUrl) : htmlspecialchars('../'.ltrim($pUrl,'/')); ?>
 <div class="post-card-item">
-<?php if($pUrl): ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><img src="<?php echo htmlspecialchars($pUrl);?>" onerror="this.remove()" alt=""><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php else: ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php endif; ?>
+<?php if($pUrl): ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><img src="<?php echo $avatar_src;?>" onerror="this.remove()" alt=""><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php else: ?><div class="post-avatar" style="background:<?php echo $isUserPost?htmlspecialchars($pBg):'';?>"><span class="post-avatar-emoji"><?php echo $pEmoji;?></span></div><?php endif; ?>
 <div class="item-info">
 <div class="post-head">
 <span class="post-actor"><?php echo htmlspecialchars($isUserPost?($po['user_nick']??'用户'):($pAuthor==='1'?$n1:$n2));?></span>
