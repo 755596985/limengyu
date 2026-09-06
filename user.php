@@ -139,6 +139,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .ok{background:#e8f5e9;color:#2e7d32}
 .back{text-align:center;margin-top:20px}
 .back a{color:var(--pri);text-decoration:none;font-size:.9em}
+
+.ico{display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lbl-ico{display:inline-flex;align-items:center;vertical-align:-2px;color:var(--pri,#4a90d9);margin-right:5px;gap:3px}
+.ico-badge{display:inline-block;vertical-align:-5px;margin-right:8px;color:var(--pri,#4a90d9)}
+.btn .ico,a .ico,.lbl-ico .ico{pointer-events:none}
 </style>
 </head>
 <body>
@@ -155,27 +160,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
 <?php if ($targetIsOwn): ?>
 <div class="nc">
-<h2>👤 编辑资料</h2>
+<h2><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> 编辑资料</h2>
 <form method="post">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="update_nickname">
 <div class="fg"><label>昵称</label><input type="text" name="nickname" class="inp" value="<?php echo htmlspecialchars($me['nickname']??''); ?>" maxlength="20"></div>
-<button type="submit" class="btn">💾 保存昵称</button>
+<button type="submit" class="btn"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存昵称</button>
 </form>
 </div>
 
 <div class="nc">
-<h2>🖼️ 上传头像</h2>
+<h2><span class="lbl-ico"><?php echo m_ico("image", 15); ?></span> 上传头像</h2>
 <form method="post" enctype="multipart/form-data">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="upload_avatar">
 <div class="fg"><input type="file" name="avatar" accept="image/*"></div>
-<button type="submit" class="btn">📷 上传头像</button>
+<button type="submit" class="btn"><span class="lbl-ico"><?php echo m_ico("camera", 15); ?></span> 上传头像</button>
 </form>
 </div>
 
 <div class="nc">
-<h2>🔒 修改密码</h2>
+<h2><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 修改密码</h2>
 <details>
 <summary style="cursor:pointer;font-size:.88em;color:var(--tl);font-weight:600;margin-bottom:12px;user-select:none">展开修改密码</summary>
 <form method="post" style="margin-top:12px">
@@ -184,14 +189,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <div class="fg"><label>旧密码</label><input type="password" name="old_password" class="inp" placeholder="请输入当前密码" required></div>
 <div class="fg"><label>新密码（至少6位）</label><input type="password" name="new_password" class="inp" placeholder="请输入新密码" minlength="6" required></div>
 <div class="fg"><label>确认新密码</label><input type="password" name="confirm_password" class="inp" placeholder="再次输入新密码" minlength="6" required></div>
-<button type="submit" class="btn">🔑 修改密码</button>
+<button type="submit" class="btn"><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 修改密码</button>
 </form>
 </details>
 </div>
 <?php endif; ?>
 
 <div class="nc">
-<h2>💬 说说 (<?php echo count($myPosts);?>)</h2>
+<h2><span class="lbl-ico"><?php echo m_ico("comment", 15); ?></span> 说说 (<?php echo count($myPosts);?>)</h2>
 <?php if (empty($myPosts)): ?><p style="text-align:center;color:var(--tl);padding:30px">还没有发表过说说~</p>
 <?php else: ?>
 <form method="post" onsubmit="return confirm('确定删除选中的说说？')">
@@ -203,7 +208,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <div class="post-content"><div style="font-weight:600;color:var(--tx)"><?php echo htmlspecialchars($po['mood']??'💕');?> <?php echo htmlspecialchars(mb_substr($po['content'],0,50));?><?php echo mb_strlen($po['content'])>50?'…':'';?></div><div class="post-meta"><?php echo htmlspecialchars($po['time']??''); ?></div></div>
 </div>
 <?php endforeach; ?>
-<?php if ($targetIsOwn): ?><button type="submit" class="btn" style="background:#ffebee;color:#c0392b">🗑️ 删除选中</button><?php endif; ?>
+<?php if ($targetIsOwn): ?><button type="submit" class="btn" style="background:#ffebee;color:#c0392b"><span class="lbl-ico"><?php echo m_ico("trash", 15); ?></span> 删除选中</button><?php endif; ?>
 </form>
 <?php endif; ?>
 </div>

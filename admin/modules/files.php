@@ -130,44 +130,44 @@ if ($editing_file !== '') {
 ?>
 <?php if ($tab === 'files'): ?>
 <div class="card">
-<div class="card-title">📁 文件管理</div>
+<div class="card-title"><?php echo m_ico_badge('folder'); ?>文件管理</div>
 <div style="margin-bottom:16px">
-<span style="font-size:.85em;color:var(--tl)">📂 当前目录：</span>
+<span style="font-size:.85em;color:var(--tl)"><span class="lbl-ico"><?php echo m_ico("folder", 15); ?></span> 当前目录：</span>
 <span style="font-size:.85em;color:var(--pri);word-break:break-all">/<?php echo htmlspecialchars($fm_rel); ?></span>
 <?php if ($fm_rel !== ''): ?>
-<a href="?tab=files&dir=<?php echo urlencode($fm_parent); ?>" class="btn small" style="margin-left:8px">⬆ 上级目录</a>
+<a href="?tab=files&dir=<?php echo urlencode($fm_parent); ?>" class="btn small" style="margin-left:8px"><span class="lbl-ico"><?php echo m_ico("arrowup", 15); ?></span> 上级目录</a>
 <?php endif; ?>
-<a href="?tab=files" class="btn small" style="margin-left:4px">🏠 根目录</a>
+<a href="?tab=files" class="btn small" style="margin-left:4px"><span class="lbl-ico"><?php echo m_ico("home", 15); ?></span> 根目录</a>
 </div>
 <form method="post" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="upload_file">
 <input type="hidden" name="dir" value="<?php echo htmlspecialchars($fm_rel); ?>">
 <input type="file" name="file" required style="font-size:.82em;flex:1;min-width:150px">
-<button type="submit" class="btn primary small">📤 上传</button>
+<button type="submit" class="btn primary small"><span class="lbl-ico"><?php echo m_ico("upload", 15); ?></span> 上传</button>
 </form>
 <form method="post" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="mkdir_file">
 <input type="hidden" name="dir" value="<?php echo htmlspecialchars($fm_rel); ?>">
 <input type="text" name="dirname" class="neo" placeholder="新建目录名" style="flex:1;min-width:120px;font-size:.82em;padding:8px 12px">
-<button type="submit" class="btn small">📁 创建</button>
+<button type="submit" class="btn small"><span class="lbl-ico"><?php echo m_ico("folder", 15); ?></span> 创建</button>
 </form>
 </div>
 <?php if (!empty($fm_dirs)): ?>
-<div class="card"><div class="card-title">📁 目录</div>
+<div class="card"><div class="card-title"><?php echo m_ico_badge('folder'); ?>目录</div>
 <?php foreach ($fm_dirs as $d): $sub = $fm_rel ? $fm_rel . '/' . $d : $d; ?>
 <div class="list-item">
-<div style="font-size:1.5em">📁</div>
+<div style="font-size:1.5em"><span class="lbl-ico"><?php echo m_ico("folder", 15); ?></span></div>
 <div class="item-info"><div class="item-title"><?php echo htmlspecialchars($d); ?>/</div></div>
 <div style="flex-shrink:0;display:flex;gap:6px">
-<a href="?tab=files&dir=<?php echo urlencode($sub); ?>" class="btn small">📂 打开</a>
+<a href="?tab=files&dir=<?php echo urlencode($sub); ?>" class="btn small"><span class="lbl-ico"><?php echo m_ico("folder", 15); ?></span> 打开</a>
 <form method="post" onsubmit="return confirm('确定删除目录？')" style="display:inline"><?php echo csrf_field(); ?><input type="hidden" name="act" value="delete_dir"><input type="hidden" name="dir" value="<?php echo htmlspecialchars($sub); ?>"><button type="submit" class="btn small danger">删除</button></form>
 </div>
 </div>
 <?php endforeach; ?></div>
 <?php endif; ?>
-<div class="card"><div class="card-title">📄 文件 (<?php echo count($fm_files); ?>)</div>
+<div class="card"><div class="card-title"><?php echo m_ico_badge('file'); ?>文件 (<?php echo count($fm_files); ?>)</div>
 <?php if (empty($fm_files)): ?>
 <p style="text-align:center;color:var(--tl);padding:30px">空目录</p>
 <?php else: foreach ($fm_files as $fn):
@@ -187,20 +187,20 @@ if ($editing_file !== '') {
 <div class="item-meta"><?php echo $fsh; ?> · <?php echo htmlspecialchars($fext); ?></div>
 </div>
 <div style="flex-shrink:0;display:flex;gap:6px">
-<?php if ($isText): ?><a href="?tab=files&dir=<?php echo urlencode($fm_rel); ?>&edit=<?php echo urlencode($fp); ?>" class="btn small primary">✏️ 编辑</a><?php endif; ?>
+<?php if ($isText): ?><a href="?tab=files&dir=<?php echo urlencode($fm_rel); ?>&edit=<?php echo urlencode($fp); ?>" class="btn small primary"><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span> 编辑</a><?php endif; ?>
 <form method="post" onsubmit="return confirm('确定删除文件？')" style="display:inline"><?php echo csrf_field(); ?><input type="hidden" name="act" value="delete_file"><input type="hidden" name="file" value="<?php echo htmlspecialchars($fp); ?>"><button type="submit" class="btn small danger">删除</button></form>
 </div>
 </div>
 <?php endforeach; endif; ?></div>
 <?php if ($editing_file !== ''): ?>
 <div class="card">
-<div class="card-title">✏️ 编辑：<?php echo htmlspecialchars(basename($editing_file)); ?><?php if (in_array(strtolower(pathinfo($editing_file, PATHINFO_EXTENSION)), ['php','phtml','phps'])): ?> <span style="color:#c0392b;font-size:.75em">⚠️ PHP文件</span><?php endif; ?></div>
+<div class="card-title"><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span> 编辑：<?php echo htmlspecialchars(basename($editing_file)); ?><?php if (in_array(strtolower(pathinfo($editing_file, PATHINFO_EXTENSION)), ['php','phtml','phps'])): ?> <span style="color:#c0392b;font-size:.75em"><span class="lbl-ico"><?php echo m_ico("alert", 15); ?></span> PHP文件</span><?php endif; ?></div>
 <form method="post"><?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="save_file">
 <input type="hidden" name="file" value="<?php echo htmlspecialchars($editing_file); ?>">
 <div class="fg"><textarea name="content" class="neo" rows="25" style="font-family:monospace;font-size:.82em"><?php echo htmlspecialchars($editing_content); ?></textarea></div>
 <div class="btn-group">
-<button type="submit" class="btn primary">💾 保存</button>
+<button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存</button>
 <a href="?tab=files&dir=<?php echo urlencode($fm_rel); ?>" class="btn">取消</a>
 </div></form>
 </div>

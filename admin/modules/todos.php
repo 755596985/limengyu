@@ -29,12 +29,12 @@ if (($MOD_RUN ?? '') === 'handle') {
 if (($MOD_RUN ?? '') === 'render') {
 ?>
 <?php if ($tab === 'todos'): ?>
-<div class="card"><div class="card-title">📝 添加事项</div>
+<div class="card"><div class="card-title"><?php echo m_ico_badge('edit'); ?>添加事项</div>
 <form method="post"><?php echo csrf_field(); ?><input type="hidden" name="act" value="save_todo">
-<div class="fg"><label>📋 事项 *</label><input type="text" name="title" class="neo" placeholder="一起看日出" required></div>
-<div class="fg"><label>📝 备注</label><textarea name="note" class="neo" rows="2"></textarea></div>
-<div class="btn-group"><button type="submit" class="btn primary">✅ 添加</button></div></form></div>
-<div class="card"><div class="card-title">📋 清单 (<?php $dn=count(array_filter($todos,function($t){return !empty($t['done']);}));echo $dn.'/'.count($todos);?>)</div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("list", 15); ?></span> 事项 *</label><input type="text" name="title" class="neo" placeholder="一起看日出" required></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span> 备注</label><textarea name="note" class="neo" rows="2"></textarea></div>
+<div class="btn-group"><button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("check", 15); ?></span> 添加</button></div></form></div>
+<div class="card"><div class="card-title"><span class="lbl-ico"><?php echo m_ico("list", 15); ?></span> 清单 (<?php $dn=count(array_filter($todos,function($t){return !empty($t['done']);}));echo $dn.'/'.count($todos);?>)</div>
 <?php if(empty($todos)):?><p style="text-align:center;color:var(--tl);padding:30px">清单空的~</p>
 <?php else: foreach($todos as $i=>$t):$isd=!empty($t['done']);?>
 <div class="list-item">

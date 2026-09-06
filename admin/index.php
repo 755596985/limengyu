@@ -50,17 +50,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .btn:active{box-shadow:inset 4px 4px 10px var(--sd),inset -4px -4px 10px var(--sl);transform:scale(.97)}
 .error{background:var(--err);color:var(--errtx);padding:10px;border-radius:10px;margin-bottom:14px;font-size:.85em}
 .back{display:block;margin-top:18px;color:var(--tl);text-decoration:none;font-size:.85em}
+
+.ico{display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lbl-ico{display:inline-flex;align-items:center;vertical-align:-2px;color:var(--pri,#4a90d9);margin-right:5px;gap:3px}
+.ico-badge{display:inline-block;vertical-align:-5px;margin-right:8px;color:var(--pri,#4a90d9)}
+.btn .ico,a .ico,.lbl-ico .ico{pointer-events:none}
 </style>
 </head>
 <body>
-<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s">🌙</button>
+<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s"><span class="lbl-ico"><?php echo m_ico("moon", 15); ?></span></button>
 <div class="login-box">
-<div class="lock">🔐</div><h2>后台管理</h2><p class="sub"><?php echo htmlspecialchars($st); ?> · 管理后台</p>
+<div class="lock"><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span></div><h2>后台管理</h2><p class="sub"><?php echo htmlspecialchars($st); ?> · 管理后台</p>
 <?php if ($error): ?><div class="error"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 <form method="post" autocomplete="off">
 <?php echo csrf_field(); ?>
-<div class="fg"><label>👤 管理账号</label><input type="text" name="username" placeholder="请输入账号" required autofocus autocomplete="off"></div>
-<div class="fg"><label>🔑 管理密码</label><input type="password" name="password" placeholder="请输入密码" required autocomplete="off"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> 管理账号</label><input type="text" name="username" placeholder="请输入账号" required autofocus autocomplete="off"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 管理密码</label><input type="password" name="password" placeholder="请输入密码" required autocomplete="off"></div>
 <button type="submit" class="btn">登 录</button></form>
 <a href="../" class="back">← 返回首页</a>
 <p style="margin-top:16px;font-size:.72em;color:var(--tl)">首次登录后请及时修改默认密码</p>

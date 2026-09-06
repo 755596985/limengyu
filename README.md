@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 9c3be9704dab5258e5b545b7cd4356a2_f4767bf0993111f19467525400287e28
+    ReservedCode1: bHaSftwBfttlwWwNT3f5NY2+RVufeMYZrUApHzPqYiWEnRxaswD2TdBTv2Knm1ESYiwkwxjulkFzgszUFsymxJsfgTu+nvZmy6Z24oYKd3Dj4XhWXiMRZQZy4N2QoTFjVntCHc1Zc+bIpuUkoXyzeDiGMi2YqyJOunv5HTM9QAD1vX01FojsNxULv18=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 9c3be9704dab5258e5b545b7cd4356a2_f4767bf0993111f19467525400287e28
+    ReservedCode2: bHaSftwBfttlwWwNT3f5NY2+RVufeMYZrUApHzPqYiWEnRxaswD2TdBTv2Knm1ESYiwkwxjulkFzgszUFsymxJsfgTu+nvZmy6Z24oYKd3Dj4XhWXiMRZQZy4N2QoTFjVntCHc1Zc+bIpuUkoXyzeDiGMi2YqyJOunv5HTM9QAD1vX01FojsNxULv18=
+---
+
 # 💕 情侣小窝（Qinglv XiaoWo）
 
 一个**适合两个人私藏的小站**：写说说、传相册、记足迹、列心愿清单，还有带 AI 自动回复的评论区——部署一次，就是属于你们的"爱情小窝"。
@@ -129,3 +140,4 @@ https://你的域名/cron_ai_post.php?key=你的密钥
 ---
 
 *愿每一个小窝，都住着两个人。* 💕
+*（内容由AI生成，仅供参考）*

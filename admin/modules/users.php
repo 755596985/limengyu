@@ -74,7 +74,7 @@ if (($MOD_RUN ?? '') === 'handle') {
 if (($MOD_RUN ?? '') === 'render') {
 ?>
 <?php if ($tab === 'users'): ?>
-<div class="card"><div class="card-title">👥 用户管理 (<?php echo count($users);?>人)</div>
+<div class="card"><div class="card-title"><?php echo m_ico_badge('users'); ?>用户管理 (<?php echo count($users);?>人)</div>
 <?php if(empty($users)):?><p style="text-align:center;color:var(--tl);padding:30px">暂无注册用户</p>
 <?php else: ?>
 <div class="user-table-wrap">
@@ -102,9 +102,9 @@ $time = htmlspecialchars($u['created_at'] ?? '—');
 <td data-label="状态"><span class="status-badge <?php echo $statusClass[$s];?>"><?php echo $statusLabel[$s];?></span></td>
 <td data-label="操作">
 <div class="action-btns">
-<button type="button" class="btn small" onclick="editUser('<?php echo $uid;?>')" title="编辑">✏️</button>
-<form method="post" style="display:inline"><?php echo csrf_field();?><input type="hidden" name="act" value="user_refresh_ip"><input type="hidden" name="uid" value="<?php echo $uid;?>"><button type="submit" class="btn small" title="刷新IP">🔄</button></form>
-<form method="post" onsubmit="return confirm('确定删除该用户吗？删除后该用户的所有数据也会丢失。')" style="display:inline"><?php echo csrf_field();?><input type="hidden" name="act" value="delete_user"><input type="hidden" name="id" value="<?php echo $i;?>"><button type="submit" class="btn small danger" title="删除">🗑️</button></form>
+<button type="button" class="btn small" onclick="editUser('<?php echo $uid;?>')" title="编辑"><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span></button>
+<form method="post" style="display:inline"><?php echo csrf_field();?><input type="hidden" name="act" value="user_refresh_ip"><input type="hidden" name="uid" value="<?php echo $uid;?>"><button type="submit" class="btn small" title="刷新IP"><span class="lbl-ico"><?php echo m_ico("refresh", 15); ?></span></button></form>
+<form method="post" onsubmit="return confirm('确定删除该用户吗？删除后该用户的所有数据也会丢失。')" style="display:inline"><?php echo csrf_field();?><input type="hidden" name="act" value="delete_user"><input type="hidden" name="id" value="<?php echo $i;?>"><button type="submit" class="btn small danger" title="删除"><span class="lbl-ico"><?php echo m_ico("trash", 15); ?></span></button></form>
 </div>
 </td>
 </tr>
@@ -116,30 +116,30 @@ $time = htmlspecialchars($u['created_at'] ?? '—');
 <!-- 用户编辑弹窗 -->
 <div class="modal-overlay" id="userModal" style="display:none">
 <div class="modal-box">
-<div class="modal-header"><span class="modal-title">✏️ 编辑用户</span><button type="button" class="modal-close" onclick="closeUserModal()">✕</button></div>
+<div class="modal-header"><span class="modal-title"><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span> 编辑用户</span><button type="button" class="modal-close" onclick="closeUserModal()"><span class="lbl-ico"><?php echo m_ico("x", 15); ?></span></button></div>
 <form method="post" id="userEditForm" enctype="multipart/form-data">
 <?php echo csrf_field();?>
 <input type="hidden" name="act" value="user_edit">
 <input type="hidden" name="uid" id="edit_uid">
-<div class="fg"><label>👤 昵称</label><input type="text" name="nickname" id="edit_nickname" class="neo" placeholder="用户昵称" required></div>
-<div class="fg"><label>📧 邮箱</label><input type="email" name="email" id="edit_email" class="neo" placeholder="email@example.com"></div>
-<div class="fg"><label>🖼️ 头像</label>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> 昵称</label><input type="text" name="nickname" id="edit_nickname" class="neo" placeholder="用户昵称" required></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("mail", 15); ?></span> 邮箱</label><input type="email" name="email" id="edit_email" class="neo" placeholder="email@example.com"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("image", 15); ?></span> 头像</label>
 <div style="margin-bottom:8px"><img id="edit_avatar_preview" src="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;display:none;box-shadow:0 2px 8px rgba(0,0,0,.15)"></div>
 <input type="file" name="user_avatar" accept="image/*" style="font-size:.82em">
 <div style="font-size:.7em;color:var(--tl);margin-top:2px">不选则保持原头像</div></div>
-<div class="fg"><label>🔒 新密码</label><input type="password" name="password" id="edit_password" class="neo" placeholder="留空则不修改密码" autocomplete="new-password"></div>
-<div class="fg"><label>🎨 头像颜色</label>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 新密码</label><input type="password" name="password" id="edit_password" class="neo" placeholder="留空则不修改密码" autocomplete="new-password"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("star", 15); ?></span> 头像颜色</label>
 <div class="color-picker" id="colorPicker">
 <?php $colors=['#d4786e','#e8857c','#f0a89e','#e8618c','#c06a9e','#9b6db5','#7e8cc4','#5b9ecf','#4cb8b0','#5cb85c','#9acd32','#f0ad4e','#e67e22','#95a5a6']; foreach($colors as $c):?>
 <label class="color-dot" style="background:<?php echo $c;?>" data-color="<?php echo $c;?>"><input type="radio" name="avatar_color" value="<?php echo $c;?>"></label>
 <?php endforeach;?>
 </div></div>
-<div class="fg"><label>📊 状态</label><select name="status" id="edit_status" class="neo" style="width:auto">
-<option value="active">✅ 正常</option>
-<option value="inactive">⚠️ 停用</option>
-<option value="banned">🚫 封禁</option>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("chart", 15); ?></span> 状态</label><select name="status" id="edit_status" class="neo" style="width:auto">
+<option value="active"><span class="lbl-ico"><?php echo m_ico("check", 15); ?></span> 正常</option>
+<option value="inactive"><span class="lbl-ico"><?php echo m_ico("alert", 15); ?></span> 停用</option>
+<option value="banned"><span class="lbl-ico"><?php echo m_ico("ban", 15); ?></span> 封禁</option>
 </select></div>
-<div class="btn-group"><button type="submit" class="btn primary">💾 保存</button><button type="button" class="btn" onclick="closeUserModal()">取消</button></div>
+<div class="btn-group"><button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存</button><button type="button" class="btn" onclick="closeUserModal()">取消</button></div>
 </form>
 </div></div>
 

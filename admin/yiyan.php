@@ -51,25 +51,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
 @media(max-width:768px){.main{padding:12px 10px 80px}.card{padding:16px;border-radius:12px}}
 @media(max-width:600px){.card-title{font-size:.95em}.btn{font-size:.82em;padding:8px 16px}}
+
+.ico{display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lbl-ico{display:inline-flex;align-items:center;vertical-align:-2px;color:var(--pri,#4a90d9);margin-right:5px;gap:3px}
+.ico-badge{display:inline-block;vertical-align:-5px;margin-right:8px;color:var(--pri,#4a90d9)}
+.btn .ico,a .ico,.lbl-ico .ico{pointer-events:none}
 </style>
 </head>
 <body>
-<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s">🌙</button>
+<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s"><span class="lbl-ico"><?php echo m_ico("moon", 15); ?></span></button>
 <div class="main">
-<?php if ($message): ?><div class="msg success">✅ <?php echo htmlspecialchars($message); ?></div><?php endif; ?>
-<?php if ($error): ?><div class="msg error">❌ <?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+<?php if ($message): ?><div class="msg success"><span class="lbl-ico"><?php echo m_ico("check", 15); ?></span> <?php echo htmlspecialchars($message); ?></div><?php endif; ?>
+<?php if ($error): ?><div class="msg error"><span class="lbl-ico"><?php echo m_ico("x", 15); ?></span> <?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
 <div class="card">
-<div class="card-title">💭 一言管理</div>
+<div class="card-title"><?php echo m_ico_badge('quote'); ?>一言管理</div>
 <form method="post">
 <?php echo csrf_field(); ?>
 <div class="fg">
-<label>🔗 API 地址</label>
+<label><span class="lbl-ico"><?php echo m_ico("link", 15); ?></span> API 地址</label>
 <input type="text" name="api_url" class="neo" value="<?php echo htmlspecialchars($currentApiUrl); ?>" placeholder="/api.php">
 </div>
 <div class="fg" style="font-size:.82em;color:var(--tl)">默认使用内置的 /api.php，也可以填入任意兼容的一言 API 地址。</div>
 <div class="btn-group">
-<button type="submit" class="btn primary">💾 保存设置</button>
+<button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存设置</button>
 <a href="manage.php" class="btn">← 返回后台</a>
 </div>
 </form>

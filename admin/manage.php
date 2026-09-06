@@ -73,21 +73,6 @@ if (isset($_GET['msg'])) $message = $_GET['msg'];
 if (isset($_GET['err'])) $error = $_GET['err'];
 if (isset($_GET['logout'])) { unset($_SESSION['cp_admin']); session_regenerate_id(true); header('Location: index.php'); exit; }
 
-$posts = posts_all();
-$places = places_all();
-$todos = todos_all();
-$photos = photos_all();
-$pages = pages_all();
-$comments = comments_all();
-$users = users_all();
-$about = get_about();
-$config = get_config();
-$admin_saved = admin_get();
-$filter_words = filter_words_get();
-$n1 = $config['name1'] ?? '男神';
-$n2 = $config['name2'] ?? '女神';
-$av1 = $config['avatar1'] ?? '';
-$av2 = $config['avatar2'] ?? '';
 ?><!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -215,6 +200,36 @@ select.neo{cursor:pointer}
 .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:var(--card);transition:.3s;border-radius:50%}
 input:checked+.slider{background:#4a90d9}
 input:checked+.slider:before{transform:translateX(20px)}
+
+/* ===== UI 美化覆盖层（SVG 图标 + 视觉精修） ===== */
+.ico{vertical-align:-2.5px;flex-shrink:0}
+.card-title{display:flex;align-items:center;letter-spacing:.3px}
+.btn{display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn.primary{background:linear-gradient(135deg,var(--pri),#e8a08f);color:#fff;box-shadow:0 6px 16px rgba(212,120,110,.28)}
+.btn.danger{background:rgba(229,57,53,.1);box-shadow:none}
+.btn.small{padding:6px 12px}
+.msg{display:flex;align-items:flex-start;gap:6px}
+.msg span{flex:1;min-width:0}
+.neo{border:1px solid transparent;transition:border-color .2s,background .2s}
+.neo:focus{border-color:rgba(212,120,110,.45);outline:none;background:var(--card);box-shadow:0 0 0 3px rgba(212,120,110,.08)}
+.bnav a{transition:all .18s}
+.bnav a:active{transform:scale(.9)}
+.bnav a .ni{font-size:inherit;line-height:1;display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border-radius:10px;margin-bottom:3px;transition:background .18s,color .18s}
+.bnav a.active .ni{background:rgba(212,120,110,.15)}
+.bnav a.active{font-weight:700}
+.list-item .item-actions a,.list-item .btn,.item-btns .btn{display:inline-flex;align-items:center;gap:4px}
+input[type=file]{max-width:100%;padding:8px 10px;border:1px dashed rgba(212,120,110,.4);border-radius:10px;background:var(--prisoft);color:var(--tl);font-size:.85em;cursor:pointer}
+input[type=file]::file-selector-button{padding:5px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--pri),#e8a08f);color:#fff;font-weight:600;font-size:.82em;cursor:pointer;margin-right:8px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.16);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+@media (hover:hover){.btn{cursor:pointer}}
+
+
+.ico{display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lbl-ico{display:inline-flex;align-items:center;vertical-align:-2px;color:var(--pri,#4a90d9);margin-right:5px;gap:3px}
+.ico-badge{display:inline-block;vertical-align:-5px;margin-right:8px;color:var(--pri,#4a90d9)}
+.btn .ico,a .ico,.lbl-ico .ico{pointer-events:none}
 </style>
 <script>
 function togglePostField(id) {
@@ -358,10 +373,10 @@ document.getElementById('userModal') && document.getElementById('userModal').add
 </script>
 </head>
 <body>
-<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s">🌙</button>
+<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;transition:transform .2s"><?php echo m_ico('moon',17); ?></button>
 <div class="main">
-<?php if ($message): ?><div class="msg success">✅ <?php echo htmlspecialchars($message); ?></div><?php endif; ?>
-<?php if ($error): ?><div class="msg error">❌ <?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+<?php if ($message): ?><div class="msg success"><?php echo m_ico('check',16); ?> <span><?php echo htmlspecialchars($message); ?></span></div><?php endif; ?>
+<?php if ($error): ?><div class="msg error"><?php echo m_ico('alert',16); ?> <span><?php echo htmlspecialchars($error); ?></span></div><?php endif; ?>
 <?php
 // ===== 模块化：页面渲染分发 =====
 $MOD_RUN = 'render';
@@ -378,11 +393,11 @@ unset($MOD_RUN);
 
 <div class="bnav">
 <?php foreach ($MODULES as $mod): ?>
-<a href="?tab=<?php echo $mod['key']; ?>" class="<?php echo $tab === $mod['key'] ? 'active' : ''; ?>"><span class="ni"><?php echo $mod['icon']; ?></span><span class="nl"><?php echo $mod['label']; ?></span></a>
+<a href="?tab=<?php echo $mod['key']; ?>" class="<?php echo $tab === $mod['key'] ? 'active' : ''; ?>"><span class="ni"><?php echo m_ico($mod['icon'], 20); ?></span><span class="nl"><?php echo $mod['label']; ?></span></a>
 <?php endforeach; ?>
-<a href="yiyan.php"><span class="ni">💭</span><span class="nl">一言</span></a>
-<a href="../"><span class="ni">🏠</span><span class="nl">前台</span></a>
-<a href="?logout=1"><span class="ni">🚪</span><span class="nl">退出</span></a>
+<a href="yiyan.php"><span class="ni"><?php echo m_ico('quote', 20); ?></span><span class="nl">一言</span></a>
+<a href="../"><span class="ni"><?php echo m_ico('home', 20); ?></span><span class="nl">前台</span></a>
+<a href="?logout=1"><span class="ni"><?php echo m_ico('logout', 20); ?></span><span class="nl">退出</span></a>
 </div>
 
 <script>
@@ -392,7 +407,7 @@ unset($MOD_RUN);
     function apply(t){
         document.documentElement.setAttribute('data-theme',t);
         var b=document.getElementById('themeToggle');
-        if(b) b.textContent = (t==='dark') ? '☀️' : '🌙';
+        if(b){ b.innerHTML = (t==='dark') ? '<?php echo m_ico('sun',17); ?>' : '<?php echo m_ico('moon',17); ?>'; }
     }
     var saved=localStorage.getItem(KEY);
     apply(saved==='dark' ? 'dark' : 'milk');

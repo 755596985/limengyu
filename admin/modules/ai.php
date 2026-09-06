@@ -9,10 +9,10 @@ require_once __DIR__ . '/ai_presets.php';
 // ==================== AI 配置与常量 ====================
 $AI_DEFAULT_BASE = 'https://token.sensenova.cn/v1';
 $AI_DEFAULT_MODEL = 'sensenova-6.7-flash-lite';
-$AI_DEFAULT_KEY = ''; // 请在后台上传自己的 API Key
+$AI_DEFAULT_KEY = '';
 $AI_MAX_ROUNDS = 8;
 $AI_MEMORY_LIMIT = 100;   // 记忆条数上限
-$AI_MEMORY_INJECT = 30;   // 注入 system 的记忆条数
+$AI_MEMORY_INJECT = 15;   // 注入 system 的记忆条数（调低以降低限流风险）
 
 // ==================== AI 工具定义 ====================
 function ai_tools(): array {
@@ -125,6 +125,21 @@ function ai_tools(): array {
                         'id' => ['type' => 'string', 'description' => '要删除的留言的 id'],
                     ],
                     'required' => ['id'],
+                ],
+            ],
+        ],
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'set_ai_cron',
+                'description' => '开启或关闭 AI 每日定时发布（每天自动发一条说说，无需每天手动说）。用户说"每天定时发说说/每天发一篇/定时发布/每天自动发一条"时开启；说"取消定时发布/不要每天发了/关闭定时发布"时关闭；用户说"更换/修改每天定时发布说说的照片/图片链接"并提供新链接时，同时传入 img 更新定时发布说说的照片链接（enabled 传 true 保持开启）。',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'enabled' => ['type' => 'boolean', 'description' => 'true=开启每日自动发布，false=关闭'],
+                        'img' => ['type' => 'string', 'description' => '可选。定时发布说说要带上的照片链接（完整 URL，http/https 开头），不修改时不要传'],
+                    ],
+                    'required' => ['enabled'],
                 ],
             ],
         ],
@@ -331,6 +346,36 @@ function ai_run_tool(string $name, array $args): array {
                 $ok = comment_delete_by_id($id);
                 return $ok ? ['ok' => true, 'message' => "已删除留言 {$id}"] : ['ok' => false, 'error' => "未找到 id={$id} 的留言"];
             }
+            case 'set_ai_cron': {
+                $enabled = !empty($args['enabled']);
+                ensure_config_column('ai_cron_enabled');
+                db()->prepare('UPDATE cp_config SET ai_cron_enabled=? WHERE id=1')->execute([$enabled ? 1 : 0]);
+                // 可选：更新定时发布说说要带的照片链接
+                $imgUpdated = '';
+                $img = trim((string)($args['img'] ?? ''));
+                if ($img !== '') {
+                    if (!preg_match('#^https?://#i', $img)) {
+                        return ['ok' => false, 'error' => '照片链接格式无效，需以 http:// 或 https:// 开头'];
+                    }
+                    ensure_config_column('ai_cron_img');
+                    db()->prepare('UPDATE cp_config SET ai_cron_img=? WHERE id=1')->execute([$img]);
+                    $imgUpdated = $img;
+                }
+                ensure_config_column('ai_cron_key');
+                $rowK = db()->query('SELECT ai_cron_key FROM cp_config WHERE id=1')->fetch();
+                $key = trim((string)($rowK['ai_cron_key'] ?? ''));
+                if ($key === '') {
+                    $key = bin2hex(random_bytes(16));
+                    db()->prepare('UPDATE cp_config SET ai_cron_key=? WHERE id=1')->execute([$key]);
+                }
+                $host = $_SERVER['HTTP_HOST'] ?? 'yu.wuaze.com';
+                $cronUrl = 'https://' . $host . '/cron_ai_post.php?key=' . $key;
+                $imgMsg = $imgUpdated !== '' ? " 已更新定时发布说说的照片链接为：{$imgUpdated}。" : '';
+                if ($enabled) {
+                    return ['ok' => true, 'message' => 'AI 每日定时发布已开启：每天 09:00 后首次有人访问站点时，AI 会自动发布一条说说（20 小时内不会重复），无需每天手动说。' . $imgMsg, 'cron_url' => $cronUrl];
+                }
+                return ['ok' => true, 'message' => 'AI 每日定时发布已关闭：将不再自动发布说说。' . $imgMsg, 'cron_url' => $cronUrl];
+            }
             default:
                 return ['ok' => false, 'error' => "未知工具 {$name}"];
         }
@@ -348,6 +393,10 @@ function ai_chat_completion(array $messages, array $tools, int $timeout = 120): 
         'max_tokens' => 4096,
     ];
     if (!empty($tools)) { $payload['tools'] = $tools; }
+    // DeepSeek 系列模型需显式关闭思考模式，否则回复内容在 reasoning_content 导致 content 为空
+    if (stripos($cfg['model'], 'deepseek') !== false) {
+        $payload['reasoning_effort'] = 'none';
+    }
     $ch = curl_init(rtrim($cfg['base_url'], '/') . '/chat/completions');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -365,6 +414,34 @@ function ai_chat_completion(array $messages, array $tools, int $timeout = 120): 
     curl_close($ch);
     if ($err !== '') { return ['error' => "请求失败: {$err}"]; }
     $j = json_decode($resp, true);
+    // 429 限流：短暂等待后自动重试，最多 2 次
+    if ($code === 429) {
+        for ($retry = 0; $retry < 2; $retry++) {
+            usleep(3000000); // 3s
+            $ch = curl_init(rtrim($cfg['base_url'], '/') . '/chat/completions');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $cfg['api_key'],
+                ],
+                CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            ]);
+            $resp2 = curl_exec($ch);
+            $err2 = curl_error($ch);
+            $code2 = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($err2 === '') {
+                $j = json_decode($resp2, true);
+                if (is_array($j) && $code2 < 400) { return $j; }
+                $code = $code2; $resp = $resp2;
+                if ($code !== 429) { break; }
+            }
+        }
+        return ['error' => '接口限流(429): 请求过于频繁，请稍等 1 分钟后再试'];
+    }
     if (!is_array($j) || ($code >= 400)) {
         return ['error' => "接口返回错误({$code}): " . mb_substr($resp, 0, 300)];
     }
@@ -482,8 +559,9 @@ function ai_build_system(): string {
 5. 工具返回失败时如实说明原因，不要编造成功结果；
 6. 只做本站后台管理相关的事情，拒绝无关请求；
 7. 用户要求"评论某条说说/写观后感/回应说说"时，用 comment_post 工具；用户要求"回复某条留言/回复某人评论"时，用 reply_comment 工具；评论与回复内容应贴合当前人设语气，且不得声称自己已执行未执行的操作。
+8. 用户说"每天定时发说说/每天发一篇/定时发布/每天自动发一条/每天都要发"时，调用 set_ai_cron(enabled=true) 开启每日自动发布；用户说"取消定时发布/不要每天发了/关闭定时发布/不用自动发了"时，调用 set_ai_cron(enabled=false) 关闭；开启/关闭结果以工具返回为准，向用户确认已生效。用户说"更换/修改每天定时发布说说的照片/图片链接"并提供新链接时，调用 set_ai_cron(enabled=true, img=新链接) 更新照片链接（enabled 传 true 保持开启状态）。
 {$emotionRule}
-8. 在符合人设的前提下完成任务，人设风格可以自然融入回复，但不得影响管理功能的准确执行。
+9. 在符合人设的前提下完成任务，人设风格可以自然融入回复，但不得影响管理功能的准确执行。
 TXT;
 }
 
@@ -561,13 +639,30 @@ TXT;
  * @return array
  */
 function cron_ai_post_run(bool $enforceDelay): array {
-    // 防重复（20 小时内不重复发布）
+    // 防重复：同一自然日已发布则跳过（保证每天最多一条）；并加"发布中"原子锁防并发双发
     ensure_config_column('ai_cron_last');
-    $row2 = db()->query('SELECT ai_cron_last FROM cp_config WHERE id=1')->fetch();
+    ensure_config_column('ai_cron_busy');
+    ensure_config_column('ai_cron_busy_at');
+    $row2 = db()->query('SELECT ai_cron_last, ai_cron_busy, ai_cron_busy_at FROM cp_config WHERE id=1')->fetch();
     $lastTs = (int)($row2['ai_cron_last'] ?? 0);
-    if ($enforceDelay && $lastTs > 0 && (time() - $lastTs) < 72000) {
-        return ['ok' => true, 'skipped' => true, 'reason' => '距上次自动发布不足20小时', 'last' => date('Y-m-d H:i:s', $lastTs)];
+    $busy = (int)($row2['ai_cron_busy'] ?? 0);
+    $busyAt = (int)($row2['ai_cron_busy_at'] ?? 0);
+    if ($enforceDelay && $lastTs > 0 && date('Y-m-d', $lastTs) === date('Y-m-d')) {
+        return ['ok' => true, 'skipped' => true, 'reason' => '今天已自动发布过，不再重复', 'last' => date('Y-m-d H:i:s', $lastTs)];
     }
+    if ($busy === 1 && (time() - $busyAt) < 600) {
+        return ['ok' => true, 'skipped' => true, 'reason' => '上一次发布尚未完成，已跳过'];
+    }
+    // 原子抢占发布锁：并发请求只有一个能继续（防止站内访问与第三方定时同时触发造成一天两条）
+    $st = db()->prepare('UPDATE cp_config SET ai_cron_busy=1, ai_cron_busy_at=? WHERE id=1 AND ai_cron_busy=0');
+    $st->execute([time()]);
+    if ((int)$st->rowCount() !== 1) {
+        return ['ok' => true, 'skipped' => true, 'reason' => '检测到并发发布，已跳过'];
+    }
+    // 脚本结束（无论成败）自动释放发布锁；超过10分钟未释放的视为死锁可被接管
+    register_shutdown_function(function (): void {
+        try { db()->prepare('UPDATE cp_config SET ai_cron_busy=0 WHERE id=1')->execute(); } catch (Throwable $e) {}
+    });
 
     // 读取 AI 配置与人设
     $cfg = ai_ai_config();
@@ -576,6 +671,18 @@ function cron_ai_post_run(bool $enforceDelay): array {
     $n2 = $c['name2'] ?? '女神';
     $persona = ai_build_persona_block();
     $memory = ai_build_memory_block();
+    // 定时发布说说要带的照片链接（可通过对话修改）
+    $cronImg = trim((string)($c['ai_cron_img'] ?? ''));
+    if ($cronImg === '') { $cronImg = 'https://acg.yaohud.cn/dm/acg.php'; }
+
+    // 读取最近历史帖子标题，注入提示词避免标题/主题与历史雷同
+    $histBlock = '';
+    try {
+        $histRows = db()->query("SELECT title, created_at FROM cp_posts WHERE location='AI每日发布' AND title<>'' ORDER BY created_at DESC LIMIT 30")->fetchAll();
+        $histLines = [];
+        foreach ($histRows as $hr) { $histLines[] = (string)$hr['title'] . '（' . substr((string)$hr['created_at'], 0, 10) . '）'; }
+        if (count($histLines) > 0) { $histBlock = implode("\n", $histLines); }
+    } catch (Throwable $e) { $histBlock = ''; }
 
     $system = <<<TXT
 你是「{$n1} & {$n2} 情侣小窝」的 AI 伴侣，现在请你以当前人设发布一条新的说说（情侣小窝主页动态）。
@@ -586,10 +693,20 @@ function cron_ai_post_run(bool $enforceDelay): array {
 【长期记忆】（自动积累，供参考，避免重复内容）
 {$memory}
 
+【历史已发布标题】（刚需约束：本次新标题不得与下列任何一条相同或近似，正文主题、开头场景、结尾句式也不要与历史帖雷同，禁止复用相同标题模板）
+{$histBlock}
+
 任务要求：
-1. 写一条符合人设、自然真实的说说，内容可以是日常心情、恋爱小事、甜甜的碎碎念；
-2. 字数控制在 20-60 字之间，不要标题、不要 Markdown、不要引号包裹；
-3. 直接输出说说正文即可，不要输出任何解释或前后缀。
+1. 写一条自然真实的说说，风格不限（伤感、治愈、温馨、日常、故事、碎碎念都可以），情绪自然、有故事感，禁止强行鸡汤或说教；
+2. 字数 500-1000 字（必须不少于 500 字，建议写到 600 字以上，宁可写长不要写短），可以分段；
+3. 必须带一个标题，15 字以内；
+4. 必须带标签，2-4 个，中文、逗号分隔；
+5. 正文最后一行必须放照片链接：![照片]({$cronImg})
+6. 输出格式严格如下（四行，不要多不要少）：
+标题：<你的标题>
+标签：<标签1,标签2,标签3>
+正文：<500-1000字正文>
+图片：![照片]({$cronImg})
 TXT;
 
     $messages = [
@@ -597,23 +714,71 @@ TXT;
         ['role' => 'user', 'content' => '请现在为「单身小窝」发布一条新的说说吧。'],
     ];
 
-    // 调用 AI 生成
-    $j = ai_chat_completion($messages, []);
-    $content = trim((string)($j['choices'][0]['message']['content'] ?? ''));
-    if ($content === '' || !empty($j['error'])) {
-        return ['ok' => false, 'error' => (string)($j['error'] ?? 'AI 返回内容为空')];
+    // 读取全部历史已发布标题（用于代码层查重）
+    $histTitles = [];
+    try {
+        foreach (db()->query("SELECT title FROM cp_posts WHERE location='AI每日发布' AND title<>''")->fetchAll() as $hr) { $histTitles[] = (string)$hr['title']; }
+    } catch (Throwable $e) {}
+    // 调用 AI 生成（标题与历史重复时带反馈自动重试一次，最多两轮，避免当天漏发）
+    $title = ''; $tags = []; $img = ''; $content = ''; $raw = '';
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        if ($attempt > 0) {
+            $messages[] = ['role' => 'assistant', 'content' => $raw];
+            $messages[] = ['role' => 'user', 'content' => '你刚给的标题《' . $title . '》与历史帖子重复了。请重新写一条：标题、正文主题、场景和结尾都不能与历史雷同，仍严格按原格式输出（标题/标签/正文/图片四行）。'];
+        }
+        $j = ai_chat_completion($messages, []);
+        $raw = trim((string)($j['choices'][0]['message']['content'] ?? ''));
+        if ($raw === '' || !empty($j['error'])) {
+            return ['ok' => false, 'error' => (string)($j['error'] ?? 'AI 返回内容为空')];
+        }
+
+    // 解析：标题 / 标签 / 正文 / 图片（兼容 AI 偶尔缺少"正文："行、或使用 ### 标题 等 Markdown 格式）
+    $title = '';
+    if (preg_match('/^#{0,6}\s*标题[:：]\s*(.+)$/mu', $raw, $m)) { $title = trim($m[1]); }
+    $tags = [];
+    if (preg_match('/^#{0,6}\s*标签[:：]\s*(.+)$/mu', $raw, $m)) {
+        foreach (preg_split('/[,，、;；]/u', $m[1]) as $t) { $t = trim($t); if ($t !== '') { $tags[] = $t; } }
     }
-    $content = mb_substr($content, 0, 500);
+    $img = '';
+    if (preg_match('/^#{0,6}\s*图片[:：]\s*(\S+)$/mu', $raw, $m)) { $img = trim($m[1]); }
+
+    // 正文提取：优先标准"正文："行
+    $content = '';
+    if (preg_match('/^#{0,6}\s*正文[:：]\s*([\s\S]+?)(?:^#{0,6}\s*图片[:：]|\z)/mu', $raw, $m)) { $content = trim($m[1]); }
+    // 备用：AI 未输出"正文："行时，按行剥离"标题：/标签：/图片："前缀（含 Markdown 井号），保留其余正文
+    if ($content === '') {
+        $bodyLines = [];
+        foreach (preg_split('/\r?\n/', $raw) as $line) {
+            if (preg_match('/^\s*#{0,6}\s*(标题|标签|正文|图片)[:：]/u', $line)) { continue; }
+            $bodyLines[] = $line;
+        }
+        $content = trim(implode("\n", $bodyLines));
+    }
+    // 最后防线：若提取结果中仍残留前缀行（如 AI 输出格式混乱），统一按行剥离
+    $content = trim(preg_replace('/^\s*#{0,6}\s*(标题|标签|正文|图片)[:：].*$/mu', '', $content));
+    $content = trim(preg_replace('/\n{3,}/u', "\n\n", $content));
+    // 兜底：正文里如果没有图片链接则末尾补上（优先 AI 输出的图片行，否则用配置的定时发布照片链接）
+    if (strpos($content, '![照片]') === false) {
+        $img = ($img !== '') ? $img : '![照片](' . $cronImg . ')';
+        $content .= "\n\n" . $img;
+    }
+    $content = mb_substr($content, 0, 1100);
+    $title = mb_substr($title, 0, 30);
+    $tags = array_slice($tags, 0, 4);
+        // 标题与历史完全相同时视为重复（仅第一轮触发重试；第二轮无论结果都使用，避免当天漏发）
+        if ($attempt === 0 && $title !== '' && in_array($title, $histTitles, true)) { continue; }
+        break;
+    }
 
     // 落库发布
-    $moods = ['💕','😊','😢','😡','😴','🎉','🌧️','🔥','🥰','🤔','😎','🥳','🌹','✨'];
+    $moods = ['💕','😊','😢','🌧️','💔','🥀','🌙','🌌','🍂','🌫️','❤️','☀️','🌷','🍀'];
     $mood = $moods[array_rand($moods)];
     $author = random_int(0, 1) === 0 ? '1' : '2';
     $id = new_id();
     post_insert([
         'id' => $id,
-        'title' => '',
-        'tags' => [],
+        'title' => $title,
+        'tags' => $tags,
         'content' => $content,
         'author' => $author,
         'mood' => $mood,
@@ -770,18 +935,23 @@ if (($MOD_RUN ?? '') === 'render') {
     // 定时发布相关配置
     ensure_config_column('ai_cron_key');
     ensure_config_column('ai_cron_last');
-    $cronRow = db()->query('SELECT ai_cron_key, ai_cron_last FROM cp_config WHERE id=1')->fetch();
+    ensure_config_column('ai_cron_enabled');
+    ensure_config_column('ai_cron_img');
+    $cronRow = db()->query('SELECT ai_cron_key, ai_cron_last, ai_cron_enabled, ai_cron_img FROM cp_config WHERE id=1')->fetch();
     $cronKey = trim((string)($cronRow['ai_cron_key'] ?? ''));
     if ($cronKey === '') {
         $cronKey = bin2hex(random_bytes(16));
         db()->prepare('UPDATE cp_config SET ai_cron_key=? WHERE id=1')->execute([$cronKey]);
     }
     $cronLast = (int)($cronRow['ai_cron_last'] ?? 0);
+    $cronEnabled = (int)($cronRow['ai_cron_enabled'] ?? 0) === 1;
+    $cronImg = trim((string)($cronRow['ai_cron_img'] ?? ''));
+    if ($cronImg === '') { $cronImg = 'https://acg.yaohud.cn/dm/acg.php'; }
 ?>
 <?php if ($tab === 'ai'): ?>
 <?php $presets = ai_presets(); ?>
 <div class="card">
-<div class="card-title">🤖 AI 管理助手</div>
+<div class="card-title"><?php echo m_ico_badge('ai'); ?>AI 管理助手</div>
 <div style="font-size:.88em;color:var(--tl);margin-bottom:12px">用自然语言管理站点：发布/删除说说、查看留言、查看统计等。支持“帮我发一条说说：xxx”这类指令。</div>
 <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
 <?php echo csrf_field(); ?>
@@ -794,7 +964,7 @@ if (($MOD_RUN ?? '') === 'render') {
 </div>
 
 <div class="card">
-<div class="card-title">🎭 人设与能力</div>
+<div class="card-title"><?php echo m_ico_badge('smile'); ?>人设与能力</div>
 <form method="post" id="ai_persona_form">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="ai_save">
@@ -808,11 +978,11 @@ if (($MOD_RUN ?? '') === 'render') {
 </select>
 </div>
 <div style="flex:1;min-width:200px;display:flex;gap:14px;align-items:center;padding-top:16px">
-<label style="display:flex;align-items:center;gap:5px;font-size:.9em"><input type="checkbox" name="ai_emotion_on" value="1" <?php echo $aiCfg['emotion_on'] ? 'checked' : ''; ?>> 💬 情感识别</label>
-<label style="display:flex;align-items:center;gap:5px;font-size:.9em"><input type="checkbox" name="ai_memory_on" value="1" <?php echo $aiCfg['memory_on'] ? 'checked' : ''; ?>> 🧠 记忆系统</label>
-<label style="display:flex;align-items:center;gap:5px;font-size:.9em"><input type="checkbox" name="ai_auto_reply_on" value="1" <?php echo $aiCfg['auto_reply_on'] ? 'checked' : ''; ?>> 🤖 评论自动回复</label>
+<label style="display:flex;align-items:center;gap:5px;font-size:.9em"><input type="checkbox" name="ai_emotion_on" value="1" <?php echo $aiCfg['emotion_on'] ? 'checked' : ''; ?>><span class="lbl-ico"><?php echo m_ico("comment", 15); ?></span>  情感识别</label>
+<label style="display:flex;align-items:center;gap:5px;font-size:.9em"><input type="checkbox" name="ai_memory_on" value="1" <?php echo $aiCfg['memory_on'] ? 'checked' : ''; ?>><span class="lbl-ico"><?php echo m_ico("brain", 15); ?></span>  记忆系统</label>
+<label style="display:flex;align-items:center;gap:5px;font-size:.9em"><input type="checkbox" name="ai_auto_reply_on" value="1" <?php echo $aiCfg['auto_reply_on'] ? 'checked' : ''; ?>><span class="lbl-ico"><?php echo m_ico("ai", 15); ?></span>  评论自动回复</label>
 </div>
-<div class="fg" style="flex:2;min-width:220px;margin:0"><label>🤖 AI 回复账号（评论区挂靠身份）</label>
+<div class="fg" style="flex:2;min-width:220px;margin:0"><label><span class="lbl-ico"><?php echo m_ico("ai", 15); ?></span> AI 回复账号（评论区挂靠身份）</label>
 <select name="ai_reply_user_id" class="neo">
 <option value="">自动（最早注册账号）</option>
 <?php foreach (users_all() as $uu): ?>
@@ -833,12 +1003,12 @@ if (($MOD_RUN ?? '') === 'render') {
 <button type="button" class="btn" style="padding:6px 12px;width:auto;font-size:.85em;<?php echo $aiCfg['persona_key'] === $k ? 'background:var(--pk,#d4786e);color:#fff' : ''; ?>" onclick="aiApplyPreset(<?php echo htmlspecialchars(json_encode($k), ENT_QUOTES); ?>)"><?php echo htmlspecialchars($k); ?></button>
 <?php endforeach; ?>
 </div>
-<div style="font-size:.8em;color:var(--tl);line-height:1.7">💬 情感识别：AI 会先判断你的情绪再调整回应。🧠 记忆系统：自动记住你聊过的重要信息，下次对话仍会记得。🤖 评论自动回复：前台有人评论说说时，AI 会以当前人设自动回复，无需手动指令。</div>
+<div style="font-size:.8em;color:var(--tl);line-height:1.7"><span class="lbl-ico"><?php echo m_ico("comment", 15); ?></span> 情感识别：AI 会先判断你的情绪再调整回应。🧠 记忆系统：自动记住你聊过的重要信息，下次对话仍会记得。🤖 评论自动回复：前台有人评论说说时，AI 会以当前人设自动回复，无需手动指令。</div>
 </div>
 
 <div class="card">
-<div class="card-title">🧠 长期记忆</div>
-<div style="font-size:.88em;color:var(--tl);margin-bottom:10px">AI 自动积累的记忆内容（最多保留 <?php echo $GLOBALS['AI_MEMORY_LIMIT']; ?> 条，每次注入最近 <?php echo $GLOBALS['AI_MEMORY_INJECT']; ?> 条）。</div>
+<div class="card-title"><?php echo m_ico_badge('brain'); ?>长期记忆</div>
+<div style="font-size:.88em;color:var(--tl);margin-bottom:10px">AI 自动积累的记忆容（最多保留 <?php echo $GLOBALS['AI_MEMORY_LIMIT']; ?> 条，每次注入最近 <?php echo $GLOBALS['AI_MEMORY_INJECT']; ?> 条）。</div>
 <?php if (empty($aiCfg['memory'])): ?>
 <div style="font-size:.88em;color:var(--tl)">暂无记忆。和 AI 对话后，它会把你的消息自动记下来。</div>
 <?php else: ?>
@@ -856,17 +1026,19 @@ if (($MOD_RUN ?? '') === 'render') {
 </div>
 
 <div class="card">
-<div class="card-title">⏰ AI 每日定时发布</div>
-<div style="font-size:.88em;color:var(--tl);margin-bottom:10px">让 AI 每天自动发布一条说说，内容由当前人设 + 长期记忆生成（20-60 字）。需要在 InfinityFree 控制面板配置 Cron Job 后生效。</div>
+<div class="card-title"><?php echo m_ico_badge('clock'); ?>AI 每日定时发布
+<?php if ($cronEnabled): ?><span style="font-size:.75em;color:#fff;background:#2e7d32;border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle">已开启</span><?php else: ?><span style="font-size:.75em;color:#fff;background:#b34a40;border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle">未开启</span><?php endif; ?>
+</div>
+<div style="font-size:.88em;color:var(--tl);margin-bottom:10px">让 AI 每天自动发布一条说说，内容由当前人设 + 长期记忆生成，500-1000 字，自动带标题、标签和照片链接。每天 09:00 后首次有人访问站点时自动发布（20 小时内不重复），无需配置 Cron。也可直接在下方对话里对 AI 说“每天定时发一篇说说”来开启、说“取消定时发布”来关闭、说“更换每天定时发布说说的照片链接 <新链接>”来更换照片链接。</div>
 <div style="font-size:.85em;background:rgba(0,0,0,.03);border:1px dashed rgba(0,0,0,.12);border-radius:10px;padding:10px;margin-bottom:10px;line-height:1.9">
-<div>🔗 Cron URL（填入控制面板 Cron Jobs 的 Command）</div>
-<div style="word-break:break-all;font-family:monospace;font-size:.85em;color:#333"><?php $cronBase = ($_SERVER['REQUEST_SCHEME'] ?? 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com');
-echo htmlspecialchars($cronBase . '/cron_ai_post.php?key=' . $cronKey); ?></div>
-<div style="margin-top:4px;color:var(--tl)">📅 建议 Cron 表达式（每日 09:00）：<span style="font-family:monospace;color:#333">0 9 * * *</span></div>
+<div><span class="lbl-ico"><?php echo m_ico("image", 15); ?></span> 当前定时发布照片链接</div>
+<div style="word-break:break-all;font-family:monospace;font-size:.85em;color:#333"><?php echo htmlspecialchars($cronImg); ?></div>
+<div><span class="lbl-ico"><?php echo m_ico("link", 15); ?></span> 触发地址（备用/第三方定时服务可用）</div>
+<div style="word-break:break-all;font-family:monospace;font-size:.85em;color:#333"><?php echo htmlspecialchars('https://yu.wuaze.com/cron_ai_post.php?key=' . $cronKey); ?></div>
 <?php if ($cronLast > 0): ?>
-<div style="margin-top:4px">✅ 上次自动发布：<span style="color:#2e7d32"><?php echo date('Y-m-d H:i:s', $cronLast); ?></span>（20 小时内不会重复发布）</div>
+<div style="margin-top:4px"><span class="lbl-ico"><?php echo m_ico("check", 15); ?></span> 上次自动发布：<span style="color:#2e7d32"><?php echo date('Y-m-d H:i:s', $cronLast); ?></span>（20 小时内不会重复发布）</div>
 <?php else: ?>
-<div style="margin-top:4px">⏳ 尚未自动发布过。配置好 Cron 后到点即发布，也可点击下方按钮立即测试。</div>
+<div style="margin-top:4px">⏳ 尚未自动发布过。开启后到点即发布，也可点击下方按钮立即测试。</div>
 <?php endif; ?>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -878,13 +1050,13 @@ echo htmlspecialchars($cronBase . '/cron_ai_post.php?key=' . $cronKey); ?></div>
 <form method="post" style="display:inline" onsubmit="return confirm('重新生成 Cron 密钥？旧密钥将立即失效。');">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="ai_cron_reset_key">
-<button type="submit" class="btn" style="padding:8px 14px;width:auto;color:var(--tl)">🔄 重置密钥</button>
+<button type="submit" class="btn" style="padding:8px 14px;width:auto;color:var(--tl)"><span class="lbl-ico"><?php echo m_ico("refresh", 15); ?></span> 重置密钥</button>
 </form>
 </div>
 </div>
 
 <div class="card">
-<div class="card-title">💬 对话</div>
+<div class="card-title"><?php echo m_ico_badge('comment'); ?>对话</div>
 <div id="ai_chat_box" style="max-height:480px;overflow-y:auto;padding:10px 4px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px"></div>
 <div style="display:flex;gap:8px;align-items:flex-end">
 <textarea id="ai_input" class="neo" placeholder="例如：帮我发条说说：今天天气真好～" rows="1" style="flex:1;resize:none;min-height:40px;max-height:160px;overflow-y:auto;line-height:1.5;padding:9px 12px;box-sizing:border-box" oninput="aiAutoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea>

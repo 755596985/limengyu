@@ -61,14 +61,14 @@ if (!is_array($allMods)) $allMods = [];
 $modCount = count($allMods);
 ?>
 <div class="card">
-    <div class="card-title">🧩 模块管理</div>
+    <div class="card-title"><?php echo m_ico_badge('module'); ?>模块管理</div>
     <p style="font-size:.82em;color:var(--tl);margin-bottom:14px">启用/停用后台功能模块、调整导航顺序。保存后立即生效；「模块管理」自身不可停用。</p>
     <form method="post" action="manage.php?tab=modules">
         <?php echo csrf_field(); ?>
         <input type="hidden" name="act" value="save_modules">
         <?php $i = 1; foreach ($allMods as $m): if (!is_array($m) || empty($m['key'])) continue; ?>
         <div class="list-item" style="align-items:center">
-            <span style="font-size:1.4em;width:34px;text-align:center"><?php echo htmlspecialchars((string)($m['icon'] ?? '📦')); ?></span>
+            <span style="width:34px;text-align:center;color:var(--pri)"><?php echo m_ico((string)($m['icon'] ?? 'module'), 22); ?></span>
             <div class="item-info">
                 <div class="item-title"><?php echo htmlspecialchars((string)($m['label'] ?? $m['key'])); ?>
                     <span class="item-meta"><?php echo htmlspecialchars($m['key']); ?></span>

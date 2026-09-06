@@ -33,18 +33,18 @@ if (($MOD_RUN ?? '') === 'handle') {
 if (($MOD_RUN ?? '') === 'render') {
 ?>
 <?php if ($tab === 'comments'): ?>
-<div class="card"><div class="card-title">💬 留言管理 (<?php echo count($comments);?>条)</div>
+<div class="card"><div class="card-title"><?php echo m_ico_badge('comment'); ?>留言管理 (<?php echo count($comments);?>条)</div>
 <?php if(empty($comments)):?><p style="text-align:center;color:var(--tl);padding:30px">还没有留言~</p>
 <?php else: foreach($comments as $i=>$cm): $pid = $cm['post_id']??''; $poContent = ''; foreach($posts as $po) if(($po['id']??'') === $pid) { $poContent = mb_substr($po['content'],0,30); break; } ?>
 <div class="list-item">
-<div style="font-size:1.5em">💬</div>
+<div style="font-size:1.5em"><span class="lbl-ico"><?php echo m_ico("comment", 15); ?></span></div>
 <div class="item-info">
 <div class="item-title"><?php echo htmlspecialchars($cm['nick']);?> <span style="font-weight:400;color:var(--tl);font-size:.85em">→ <?php echo htmlspecialchars($poContent ?: '已删除的说说');?>…</span></div>
 <div class="item-body"><?php echo nl2br(htmlspecialchars($cm['text']));?></div>
-<div class="item-meta">🕐 <?php echo htmlspecialchars($cm['time']);?> · IP: <?php echo htmlspecialchars($cm['ip']??'');?></div>
+<div class="item-meta"><span class="lbl-ico"><?php echo m_ico("clock", 15); ?></span> <?php echo htmlspecialchars($cm['time']);?> · IP: <?php echo htmlspecialchars($cm['ip']??'');?></div>
 <?php if (!empty($cm['reply'])): ?>
 <div style="margin-top:8px;padding:10px 14px;background:#f0f8ff;border-radius:8px;border-left:3px solid #3498db">
-<div style="font-size:.78em;font-weight:700;color:#3498db;margin-bottom:4px">👤 管理员回复 · <?php echo htmlspecialchars($cm['replied_at']??'');?></div>
+<div style="font-size:.78em;font-weight:700;color:#3498db;margin-bottom:4px"><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> 管理员回复 · <?php echo htmlspecialchars($cm['replied_at']??'');?></div>
 <div style="font-size:.85em;color:#2c3e50"><?php echo nl2br(htmlspecialchars($cm['reply']));?></div>
 </div>
 <?php endif; ?>

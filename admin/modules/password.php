@@ -26,14 +26,14 @@ if (($MOD_RUN ?? '') === 'handle') {
 if (($MOD_RUN ?? '') === 'render') {
 ?>
 <?php if ($tab === 'password'): ?>
-<div class="card"><div class="card-title">🔑 管理员设置</div>
+<div class="card"><div class="card-title"><?php echo m_ico_badge('lock'); ?>管理员设置</div>
 <form method="post"><?php echo csrf_field(); ?><input type="hidden" name="act" value="change_password">
-<div class="fg"><label>👤 新账号（留空不修改）</label><input type="text" name="new_username" class="neo" placeholder="当前: <?php echo htmlspecialchars($admin_saved['username'] ?? 'admin');?>"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> 新账号（留空不修改）</label><input type="text" name="new_username" class="neo" placeholder="当前: <?php echo htmlspecialchars($admin_saved['username'] ?? 'admin');?>"></div>
 <div style="margin:8px 0;height:1px;background:rgba(0,0,0,.05)"></div>
-<div class="fg"><label>🔑 原密码（必填）</label><input type="password" name="old_password" class="neo" required></div>
-<div class="fg"><label>🆕 新密码（留空不修改）</label><input type="password" name="new_password" class="neo" minlength="4"></div>
-<div class="fg"><label>🔄 确认新密码</label><input type="password" name="confirm_password" class="neo" minlength="4"></div>
-<div class="btn-group"><button type="submit" class="btn primary">💾 保存</button></div></form></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 原密码（必填）</label><input type="password" name="old_password" class="neo" required></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("plus", 15); ?></span> 新密码（留空不修改）</label><input type="password" name="new_password" class="neo" minlength="4"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("refresh", 15); ?></span> 确认新密码</label><input type="password" name="confirm_password" class="neo" minlength="4"></div>
+<div class="btn-group"><button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存</button></div></form></div>
 <?php endif; /* password */ ?>
 <?php
     return;

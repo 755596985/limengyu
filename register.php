@@ -79,21 +79,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .err{background:#ffeaea;color:#c0392b;padding:10px 14px;border-radius:10px;margin-bottom:16px;font-size:.85em;text-align:center}
 .link{text-align:center;margin-top:18px}
 .link a{color:var(--pri);text-decoration:none;font-size:.85em}
+
+.ico{display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lbl-ico{display:inline-flex;align-items:center;vertical-align:-2px;color:var(--pri,#4a90d9);margin-right:5px;gap:3px}
+.ico-badge{display:inline-block;vertical-align:-5px;margin-right:8px;color:var(--pri,#4a90d9)}
+.btn .ico,a .ico,.lbl-ico .ico{pointer-events:none}
 </style>
 </head>
 <body>
 <div class="box">
-<h2>📝 注册</h2>
+<h2><span class="lbl-ico"><?php echo m_ico("edit", 15); ?></span> 注册</h2>
 <p class="sub">加入 <?php echo htmlspecialchars($st); ?></p>
 
-<?php if ($error): ?><div class="err">❌ <?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+<?php if ($error): ?><div class="err"><span class="lbl-ico"><?php echo m_ico("x", 15); ?></span> <?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
 <form method="post" autocomplete="off">
 <?php echo csrf_field(); ?>
-<div class="fg"><label>👤 用户名（2-20字符）</label><input type="text" name="username" class="inp" placeholder="请输入用户名" required autofocus></div>
-<div class="fg"><label>💬 昵称（选填）</label><input type="text" name="nickname" class="inp" placeholder="给自己取个好听的名字"></div>
-<div class="fg"><label>🔑 密码（至少6位）</label><input type="password" name="password" class="inp" placeholder="请输入密码" required></div>
-<div class="fg"><label>🔑 确认密码</label><input type="password" name="confirm_password" class="inp" placeholder="再次输入密码" required></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> 用户名（2-20字符）</label><input type="text" name="username" class="inp" placeholder="请输入用户名" required autofocus></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("comment", 15); ?></span> 昵称（选填）</label><input type="text" name="nickname" class="inp" placeholder="给自己取个好听的名字"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 密码（至少6位）</label><input type="password" name="password" class="inp" placeholder="请输入密码" required></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("lock", 15); ?></span> 确认密码</label><input type="password" name="confirm_password" class="inp" placeholder="再次输入密码" required></div>
 <button type="submit" class="btn">注 册</button>
 </form>
 

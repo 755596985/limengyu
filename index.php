@@ -86,9 +86,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'edit_com
         } elseif (mb_strlen($text) > 500) {
             $commentErr = '留言过长（最多500字）';
         } else {
-            comment_update($cid, $text);
-            header('Location: index.php?p=posts&cmt=1');
-            exit;
+            // 权限校验：仅管理员或留言作者本人可编辑
+            $st = db()->prepare('SELECT user_id FROM cp_comments WHERE id=?');
+            $st->execute([$cid]);
+            $owner = $st->fetchColumn();
+            if ($owner === false) {
+                $commentErr = '留言不存在或已删除';
+            } elseif (!isset($_SESSION['cp_admin']) && ($owner === null || $owner === '' || $owner !== $me['id'])) {
+                $commentErr = '无权编辑该留言';
+            } else {
+                comment_update($cid, $text);
+                header('Location: index.php?p=posts&cmt=edit');
+                exit;
+            }
         }
     }
 }
@@ -101,9 +111,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'delete_c
         if (empty($cid)) {
             $commentErr = '参数错误';
         } else {
-            comment_delete_by_id($cid);
-            header('Location: index.php?p=posts&cmt=1');
-            exit;
+            // 权限校验：仅管理员或留言作者本人可删除
+            $st = db()->prepare('SELECT user_id FROM cp_comments WHERE id=?');
+            $st->execute([$cid]);
+            $owner = $st->fetchColumn();
+            if ($owner === false) {
+                $commentErr = '留言不存在或已删除';
+            } elseif (!isset($_SESSION['cp_admin']) && ($owner === null || $owner === '' || $owner !== $me['id'])) {
+                $commentErr = '无权删除该留言';
+            } else {
+                // 级联删除该留言及其下的回复，并清理点赞记录
+                $replyIds = [];
+                $st = db()->prepare('SELECT id FROM cp_comments WHERE parent_id=?');
+                $st->execute([$cid]);
+                while ($rid = $st->fetchColumn()) { $replyIds[] = $rid; }
+                $ids = array_merge([$cid], $replyIds);
+                $ph = implode(',', array_fill(0, count($ids), '?'));
+                db()->prepare("DELETE FROM cp_comments WHERE id IN ($ph)")->execute($ids);
+                try {
+                    db()->prepare("DELETE FROM cp_comment_likes WHERE comment_id IN ($ph)")->execute($ids);
+                } catch (Throwable $e) {}
+                header('Location: index.php?p=posts&cmt=del');
+                exit;
+            }
         }
     }
 }
@@ -140,7 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'user_pos
     }
 }
 
-if (isset($_GET['cmt'])) $commentMsg = '留言成功！💕';
+if (isset($_GET['cmt'])) {
+    $commentMsg = ($_GET['cmt'] === 'edit') ? '留言已更新' : (($_GET['cmt'] === 'del') ? '留言已删除' : '留言成功！💕');
+}
 if (isset($_GET['posted'])) $userPostMsg = '发布成功！💕';
 
 $P = posts_all();
@@ -199,7 +231,7 @@ function NI($pg, $cur, $i) {
     $a = ($pg === $cur) ? ' class="active"' : '';
     $lb = ['home'=>'首页','posts'=>'说说','album'=>'相册','places'=>'足迹','todos'=>'清单'];
     $l = isset($lb[$pg]) ? $lb[$pg] : $pg;
-    return '<a href="?p='.htmlspecialchars($pg).'"'.$a.'><span class="ni">'.$i.'</span><span class="nl">'.$l.'</span></a>';
+    return '<a href="?p='.htmlspecialchars($pg).'"'.$a.'><span class="ni">'.m_ico($i,19).'</span><span class="nl">'.$l.'</span></a>';
 }
 $DN = count(array_filter($T, function($t){return !empty($t['done']);}));
 
@@ -269,8 +301,8 @@ function renderCommentItem($ct, $pid, $parentId, $likedComments, $me, $replyToNi
     }
     // 右侧：两个爱心（❤️ 点赞 / 💔 心碎），靠右
     $o .= '<span class="cmt-like-actions">';
-    $o .= '<span class="cmt-like-btn like-heart '.$likeCls.'" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">❤️ <span class="cmt-like-num">'.($likeCount > 0 ? $likeCount : '').'</span></span>';
-    $o .= '<span class="cmt-like-btn dislike-heart '.$dislikeCls.'" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">💔</span>';
+    $o .= '<span class="cmt-like-btn like-heart '.$likeCls.'" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">' . m_ico('heart', 14) . ' <span class="cmt-like-num">'.($likeCount > 0 ? $likeCount : '').'</span></span>';
+    $o .= '<span class="cmt-like-btn dislike-heart '.$dislikeCls.'" data-cid="'.htmlspecialchars($cid).'" data-pid="'.htmlspecialchars($pid).'">' . m_ico('heart', 14) . '</span>';
     $o .= '</span>';
     $o .= '</div>';
     $o .= '</div></div>';
@@ -308,7 +340,7 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
     foreach ($CM as $c) { if (($c['post_id'] ?? '') === $pid) $postComments[] = $c; }
     $cc = count($postComments);
     $o = '<div class="ncs pc">';
-    $o .= '<div class="ph"><div class="pa"'.($isUserPost?' style="background:'.htmlspecialchars($po['user_color']??'#d4786e').'"':'').'>'.($isUserPost?'<a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;">':'').AV($pav,$pem).($isUserPost?'</a>':'').'</div><div class="pi"><div class="name"'.($pcolor?' style="color:'.$pcolor.'"':'').'>'.($isUserPost?'<a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="color:var(--tx);text-decoration:none">':'').$pname.($isUserPost?'</a>':'').'</div><div class="time">'.htmlspecialchars($po['time']).(!empty($po['location'])&&$po['location']!=='未知'?' · 📍 '.htmlspecialchars($po['location']):'').($isUserPost?' · 👤 <a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="color:var(--tl);text-decoration:none">用户</a>':'').'</div></div><div class="pm">'.htmlspecialchars($po['mood']??'💕').'</div></div>';
+    $o .= '<div class="ph"><div class="pa"'.($isUserPost?' style="background:'.htmlspecialchars($po['user_color']??'#d4786e').'"':'').'>'.($isUserPost?'<a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;">':'').AV($pav,$pem).($isUserPost?'</a>':'').'</div><div class="pi"><div class="name"'.($pcolor?' style="color:'.$pcolor.'"':'').'>'.($isUserPost?'<a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="color:var(--tx);text-decoration:none">':'').$pname.($isUserPost?'</a>':'').'</div><div class="time">'.htmlspecialchars($po['time']).(!empty($po['location'])&&$po['location']!=='未知'?' · 📍 '.htmlspecialchars($po['location']):'').($isUserPost?' · <a href="user.php?id='.htmlspecialchars($po['user_id']).'" style="color:var(--tl);text-decoration:none">用户</a>':'').'</div></div><div class="pm">'.htmlspecialchars($po['mood']??'💕').'</div></div>';
     if(!empty($po['title'])) $o .= '<div class="ptitle">'.htmlspecialchars($po['title']).'</div>';
     // 内容截断
     $contentText = str_replace("\r\n", "\n", str_replace("\r", "\n", $po['content']));
@@ -346,7 +378,7 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
     if ($collapsed) {
         $topCommentCount = count($postComments);
         $ccText = $topCommentCount > 0 ? $topCommentCount.' 条留言' : '留言';
-        $o .= '<div class="cmt-toggle" data-pid="'.htmlspecialchars($pid).'" onclick="var s=this.nextElementSibling;if(s.style.display===\'block\'){s.style.display=\'none\';this.innerHTML=\'💬 '.$ccText.'\';this.classList.remove(\'expanded\')}else{s.style.display=\'block\';this.innerHTML=\'收起评论 ▴\';this.classList.add(\'expanded\')}">💬 '.$ccText.'</div>';
+        $o .= '<div class="cmt-toggle" data-pid="'.htmlspecialchars($pid).'" onclick="var tx=this.querySelector(\'.ct-tx\'),bd=this.nextElementSibling;if(bd.style.display===\'block\'){bd.style.display=\'none\';tx.textContent=\'' . $ccText . '\';this.classList.remove(\'expanded\')}else{bd.style.display=\'block\';tx.textContent=\'收起\';this.classList.add(\'expanded\')}"><span class="ct-ic">' . m_ico('comment', 14) . '</span><span class="ct-tx">' . $ccText . '</span></div>';
         $o .= '<div class="cmt-body" style="display:none">';
     }
 
@@ -436,8 +468,8 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
         $o .= '<div class="cmt-input-wrap">';
         $o .= '<input type="text" name="text" placeholder="说点什么…" maxlength="500" class="cmt-inline-input" id="cmt-input-'.htmlspecialchars($pid).'">';
         $o .= '<div class="cmt-input-tools">';
-        $o .= '<span class="cmt-tool-btn cmt-emoji-btn" onclick="toggleEmoji(this,\'cmt-input-'.htmlspecialchars($pid).'\')" title="表情">😊</span>';
-        $o .= '<span class="cmt-tool-btn cmt-img-btn" onclick="insertImageUrl(\'cmt-input-'.htmlspecialchars($pid).'\')" title="图片">🖼️</span>';
+        $o .= '<span class="cmt-tool-btn cmt-emoji-btn" onclick="toggleEmoji(this,\'cmt-input-'.htmlspecialchars($pid).'\')" title="表情">' . m_ico('smile', 15) . '</span>';
+        $o .= '<span class="cmt-tool-btn cmt-img-btn" onclick="insertImageUrl(\'cmt-input-'.htmlspecialchars($pid).'\')" title="图片">' . m_ico('album', 15) . '</span>';
         $o .= '</div>';
         $o .= '</div>';
         $o .= '<button type="submit" class="cmt-inline-send">发送</button>';
@@ -458,8 +490,8 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
         $o .= '<div class="cmt-input-wrap" style="width:100%">';
         $o .= '<textarea name="text" id="reply-text-'.htmlspecialchars($pid).'" placeholder="回复…" maxlength="500" rows="2" style="flex:1;min-width:0"></textarea>';
         $o .= '<div class="cmt-input-tools" style="align-self:flex-end">';
-        $o .= '<span class="cmt-tool-btn cmt-emoji-btn" onclick="toggleEmoji(this,\'reply-text-'.htmlspecialchars($pid).'\')" title="表情">😊</span>';
-        $o .= '<span class="cmt-tool-btn cmt-img-btn" onclick="insertImageUrl(\'reply-text-'.htmlspecialchars($pid).'\')" title="图片">🖼️</span>';
+        $o .= '<span class="cmt-tool-btn cmt-emoji-btn" onclick="toggleEmoji(this,\'reply-text-'.htmlspecialchars($pid).'\')" title="表情">' . m_ico('smile', 15) . '</span>';
+        $o .= '<span class="cmt-tool-btn cmt-img-btn" onclick="insertImageUrl(\'reply-text-'.htmlspecialchars($pid).'\')" title="图片">' . m_ico('album', 15) . '</span>';
         $o .= '</div>';
         $o .= '</div>';
         $o .= '<div style="display:flex;gap:6px;width:100%;margin-top:6px">';
@@ -482,7 +514,7 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title><?php echo htmlspecialchars($st); ?></title>
-<link rel="icon" href="data:image/svg+xml,💕">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e07a5f'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/%3E%3C/svg%3E">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--pri:#d4786e;--pl:#f0b4ac;--ac:#c7a98c;--tx:#5a4e4a;--tl:#8c7e78;--bg:#faf4ec;--card:#fff;--soft:#f5f5f5;--input:#f7f7f7;--prisoft:rgba(212,120,110,.08);--line:rgba(0,0,0,.06);--line2:rgba(0,0,0,.04);--ok:#e8f5e9;--oktx:#2e7d32;--err:#ffebee;--errtx:#c62828;--r:18px;--rs:12px;--rx:8px}
@@ -605,9 +637,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .cmt-admin-reply{margin:6px 0 6px 54px;background:var(--prisoft);border:1px solid var(--pl);border-radius:10px;padding:10px 14px;border-left:4px solid var(--pri)}
 .cmt-admin-reply-header{font-size:.75em;font-weight:700;color:var(--pri);margin-bottom:4px}
 .cmt-admin-reply-text{font-size:.82em;color:var(--tx);line-height:1.5}
-.cmt-toggle{text-align:center;font-size:.82em;color:var(--pri);padding:10px 0;cursor:pointer;user-select:none;transition:opacity .15s}
+.cmt-toggle{text-align:center;font-size:.86em;color:var(--pri);padding:5px 0;cursor:pointer;user-select:none;transition:opacity .15s}
 .cmt-toggle:hover{opacity:.7}
-.cmt-toggle.expanded{color:var(--tl);font-size:.78em;padding:6px 0}
+.cmt-toggle.expanded{color:var(--tl);font-size:.78em;padding:3px 0}
 .cmt-msg{padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:.8em}
 .cmt-msg.ok{background:var(--ok);color:var(--oktx)}
 .cmt-msg.err{background:var(--err);color:var(--errtx)}
@@ -685,17 +717,75 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .cmt-emoji-panel span:hover{background:var(--pl)}
 .cmt-input-bar{position:relative}
 .cmt-reply-form{position:relative}
+/* 赞赏 */
+.reward-btn{display:inline-block;padding:9px 26px;border:none;border-radius:24px;font-size:.92em;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ff8a80,#ff6b6b);box-shadow:0 4px 14px rgba(255,107,107,.35);transition:transform .15s}
+.reward-btn:active{transform:scale(.94)}
+.reward-mask{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+.reward-mask.show{opacity:1;visibility:visible}
+.reward-modal{background:var(--card);border-radius:16px;width:min(88vw,320px);padding:20px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.25);text-align:center;max-height:90vh;overflow-y:auto}
+.reward-head{font-size:1.05em;font-weight:700;color:var(--tx);margin-bottom:12px}
+.reward-tabs{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+.rtab{padding:7px 18px;border:1px solid var(--line);border-radius:18px;background:transparent;color:var(--tl);font-size:.85em;cursor:pointer;transition:all .15s}
+.rtab.active{color:#fff;border-color:transparent}
+.rtab.active#rtab-wx{background:#07c160}
+.rtab.active#rtab-ali{background:#1677ff}
+.reward-qr{width:min(62vw,210px);height:auto;border-radius:10px;border:1px solid var(--line);background:#fff}
+.reward-tip{font-size:.78em;color:var(--tl);margin-top:8px}
+.reward-empty{font-size:.85em;color:var(--tl);padding:30px 0}
+.reward-close{margin-top:14px;padding:7px 26px;border:1px solid var(--line);border-radius:18px;background:transparent;color:var(--tl);font-size:.83em;cursor:pointer}
+.reward-close:active{transform:scale(.95)}
+
+/* ---- UI 精修（图标/布局增强） ---- */
+svg.ico{vertical-align:-.12em;display:inline-block;flex:none}
+.sh{display:flex;align-items:center;gap:8px}
+.sh .si{display:inline-flex;align-items:center;justify-content:center;color:var(--pri);flex:none}
+.sh .st{font-weight:700;color:var(--tx)}
+.nav-a,.nav-b,.nav-c{display:inline-flex;align-items:center;gap:6px}
+.ni{display:inline-flex;align-items:center;justify-content:center}
+.l{display:flex;align-items:center;gap:8px}
+.l .l-ico{display:inline-flex;color:var(--pri)}
+.lk a{display:flex;align-items:center;gap:8px}
+.lk-ico{display:inline-flex;color:var(--pri)}
+.cmt-like-actions{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.cmt-like-btn{display:inline-flex;align-items:center;gap:4px;cursor:pointer;color:var(--tl);transition:transform .15s ease,color .15s ease;user-select:none}
+.cmt-like-btn.like-heart{color:var(--tl)}
+.cmt-like-btn.like-heart.liked{color:#e04f5f;transform:scale(1.08)}
+.cmt-like-btn.like-heart.liked svg{fill:#e04f5f;stroke:#e04f5f}
+.cmt-like-btn.dislike-heart.liked{color:#8b9dc3}
+.cmt-like-btn.dislike-heart.liked svg{fill:#8b9dc3;stroke:#8b9dc3}
+.cmt-tool-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;cursor:pointer;color:var(--tl);transition:background .15s,color .15s}
+.cmt-tool-btn:hover{background:rgba(128,128,128,.12);color:var(--pri)}
+.cmt-toggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;cursor:pointer;font-size:.86em;color:var(--tl);margin:4px 0 2px;padding:4px 0}
+.cmt-toggle:hover{color:var(--pri)}
+.reward-head{display:flex;align-items:center;justify-content:center;gap:8px;font-size:1.05em;font-weight:700}
+.reward-btn{display:inline-flex;align-items:center;gap:7px}
+.btn,.btn2{display:inline-flex;align-items:center;gap:6px}
+.post-card .pmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hero .hi{line-height:1;color:#e07a5f}
+.pm{display:flex;align-items:center;gap:4px}
+.empty .ei{display:inline-flex;color:var(--tl);opacity:.55;line-height:1}
+.ncs.empty{display:flex;flex-direction:column;align-items:center;gap:12px}
+
+
+.ico{display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lbl-ico{display:inline-flex;align-items:center;vertical-align:-2px;color:var(--pri,#4a90d9);margin-right:5px;gap:3px}
+.ico-badge{display:inline-block;vertical-align:-5px;margin-right:8px;color:var(--pri,#4a90d9)}
+.btn .ico,a .ico,.lbl-ico .ico{pointer-events:none}
+
+.cmt-toggle .ct-ic{display:inline-flex;vertical-align:-2px;margin-right:2px}
+.cmt-toggle .ct-ic svg{display:block}
+.cmt-toggle .ct-tx{vertical-align:middle}
 </style>
 </head>
 <body<?php if(!empty($C['background_image'])): ?> style="background-image:url('<?php echo htmlspecialchars($C['background_image']); ?>');background-size:cover;background-position:center;background-attachment:fixed;"<?php endif; ?>>
-<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s">🌙</button>
+<button id="themeToggle" onclick="toggleTheme()" title="切换奶白/黑夜模式" style="position:fixed;top:14px;right:14px;z-index:300;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:1.05em;display:flex;align-items:center;justify-content:center;transition:transform .2s"><?php echo m_ico('moon',17); ?></button>
 <div class="pts" id="pcs"></div>
 <div class="main-container">
 
 <div class="hero">
 <div class="avd">
 <div class="av"><?php echo AV($a1, '👦'); ?></div>
-<div class="hi">💕</div>
+<div class="hi"><span class="lbl-ico"><?php echo m_ico("heart", 15); ?></span></div>
 <div class="av"><?php echo AV($a2, '👧'); ?></div>
 </div>
 <h1><?php echo htmlspecialchars($st); ?></h1>
@@ -743,98 +833,117 @@ fetch(apiUrl)
   .catch(function(){});
 })();
 </script>
+<script>
+function openReward(){var m=document.getElementById('rewardMask');if(m)m.classList.add('show')}
+function closeReward(){var m=document.getElementById('rewardMask');if(m)m.classList.remove('show')}
+function switchReward(k){
+  var showWx = (k==='wx');
+  var bw=document.getElementById('rbody-wx'), ba=document.getElementById('rbody-ali');
+  var tw=document.getElementById('rtab-wx'), ta=document.getElementById('rtab-ali');
+  if(!bw||!ba) return;
+  bw.style.display=showWx?'':'none'; ba.style.display=showWx?'none':'';
+  if(tw)tw.className=showWx?'rtab active':'rtab';
+  if(ta)ta.className=showWx?'rtab':'rtab active';
+}
+</script>
 
 
 </div>
 
-<?php if ($commentMsg): ?><div class="cmt-msg ok">✅ <?php echo htmlspecialchars($commentMsg); ?></div><?php endif; ?>
-<?php if ($commentErr): ?><div class="cmt-msg err">❌ <?php echo htmlspecialchars($commentErr); ?></div><?php endif; ?>
+<?php if ($commentMsg): ?><div class="cmt-msg ok"><?php echo m_ico('check',15); ?> <?php echo htmlspecialchars($commentMsg); ?></div><?php endif; ?>
+<?php if ($commentErr): ?><div class="cmt-msg err"><?php echo m_ico('alert',15); ?> <?php echo htmlspecialchars($commentErr); ?></div><?php endif; ?>
 
 <?php if ($pg === 'home'): ?>
 <div class="nc tc">
 <div class="tl"><?php echo htmlspecialchars($C['love_title'] ?? '已经在一起'); ?></div>
 <div class="tn" id="dc"><?php echo $ds; ?></div>
 <div class="td"><?php echo $y; ?>年 <?php echo $m; ?>个月 <?php echo $d; ?>天</div>
-<div class="tdt">📅 <?php echo date('Y/m/d', strtotime($ld)); ?> → ∞</div>
+<div class="tdt"><?php echo m_ico('calendar',13); ?> <?php echo date('Y/m/d', strtotime($ld)); ?> → ∞</div>
 </div>
 
 <div class="sr">
-<?php if ($C['show_comments'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($P); ?></div><div class="l">💬 说说</div></div><?php endif; ?>
-<?php if ($C['show_album'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PH); ?></div><div class="l">📷 相册</div></div><?php endif; ?>
-<?php if ($C['show_places'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PL); ?></div><div class="l">📍 足迹</div></div><?php endif; ?>
-<?php if ($C['show_todos'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo $DN.'/'.count($T); ?></div><div class="l">✅ 清单</div></div><?php endif; ?>
+<?php if ($C['show_comments'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($P); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('comment',15); ?></span>说说</div></div><?php endif; ?>
+<?php if ($C['show_album'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PH); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('album',15); ?></span>相册</div></div><?php endif; ?>
+<?php if ($C['show_places'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PL); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('place',15); ?></span>足迹</div></div><?php endif; ?>
+<?php if ($C['show_todos'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo $DN.'/'.count($T); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('todo',15); ?></span>清单</div></div><?php endif; ?>
 </div>
 
-<?php if ($C['show_comments'] ?? 1): ?><a href="?p=posts" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">💬</span><span>甜蜜说说</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo count($P); ?>条</span><span class="ar">›</span></a><?php endif; ?>
-<?php if ($C['show_album'] ?? 1): ?><a href="?p=album" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">📷</span><span>我们的相册</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo count($PH); ?>张</span><span class="ar">›</span></a><?php endif; ?>
-<?php if ($C['show_places'] ?? 1): ?><a href="?p=places" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">📍</span><span>去过的地方</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo count($PL); ?>个</span><span class="ar">›</span></a><?php endif; ?>
-<?php if ($C['show_todos'] ?? 1): ?><a href="?p=todos" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em">✅</span><span>一起完成的事</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo $DN.'/'.count($T); ?></span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_comments'] ?? 1): ?><a href="?p=posts" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span class="lk-ico"><?php echo m_ico('comment',20); ?></span><span>甜蜜说说</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo count($P); ?>条</span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_album'] ?? 1): ?><a href="?p=album" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span class="lk-ico"><?php echo m_ico('album',20); ?></span><span>我们的相册</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo count($PH); ?>张</span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_places'] ?? 1): ?><a href="?p=places" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span class="lk-ico"><?php echo m_ico('place',20); ?></span><span>去过的地方</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo count($PL); ?>个</span><span class="ar">›</span></a><?php endif; ?>
+<?php if ($C['show_todos'] ?? 1): ?><a href="?p=todos" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span class="lk-ico"><?php echo m_ico('todo',20); ?></span><span>一起完成的事</span></span><span style="font-size:.78em;color:var(--tl);background:var(--soft);padding:2px 10px;border-radius:10px"><?php echo $DN.'/'.count($T); ?></span><span class="ar">›</span></a><?php endif; ?>
 
 <?php if (($C['show_comments'] ?? 1) && !empty($P)): ?>
-<div class="sh" style="margin-top:8px"><span class="si">💬</span><span class="st">最新说说</span><span class="sl"></span></div>
+<div class="sh" style="margin-top:8px"><span class="si"><?php echo m_ico('comment',16); ?></span><span class="st">最新说说</span><span class="sl"></span></div>
 <?php foreach (array_slice($P,0,3) as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, true); endif; ?>
 
 <?php if (!empty($PG)): ?>
-<div class="sh" style="margin-top:8px"><span class="si">📑</span><span class="st">更多精彩</span><span class="sl"></span></div>
+<div class="sh" style="margin-top:8px"><span class="si"><?php echo m_ico('quote',16); ?></span><span class="st">更多精彩</span><span class="sl"></span></div>
 <?php foreach($PG as $cpg):?>
-<a href="?p=<?php echo htmlspecialchars($cpg['slug']);?>" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em"><?php echo htmlspecialchars($cpg['icon']??'📄');?></span><span><?php echo htmlspecialchars($cpg['title']);?></span></span><span class="ar">›</span></a>
+<a href="?p=<?php echo htmlspecialchars($cpg['slug']);?>" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:12px;background:var(--card);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:10px;text-decoration:none;color:var(--tx);font-size:.93em;font-weight:600"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:1.3em"><?php echo htmlspecialchars($cpg['icon']??'');?></span><span><?php echo htmlspecialchars($cpg['title']);?></span></span><span class="ar">›</span></a>
 <?php endforeach; endif; ?>
 
 <?php if (($C['show_album'] ?? 1) && !empty($PH)): $lp = array_slice($PH,0,4); ?>
-<div class="sh" style="margin-top:8px"><span class="si">📷</span><span class="st">最新照片</span><span class="sl"></span></div>
+<div class="sh" style="margin-top:8px"><span class="si"><?php echo m_ico('album',16); ?></span><span class="st">最新照片</span><span class="sl"></span></div>
 <div class="ag"><?php foreach($lp as $ph): ?><div class="ai" onclick="l('<?php echo htmlspecialchars($ph['url'],ENT_QUOTES); ?>')"><img src="<?php echo htmlspecialchars($ph['url']); ?>" loading="lazy"><?php if(!empty($ph['title'])):?><div class="cap"><?php echo htmlspecialchars($ph['title']); ?></div><?php endif; ?></div><?php endforeach; ?></div>
 <?php endif; endif; /* end home */ ?>
 
 <?php if ($pg === 'posts' && ($C['show_comments'] ?? 1)): ?>
-<div class="sh"><span class="si">💬</span><span class="st">甜蜜说说</span><span class="sc"><?php echo count($P); ?></span></div>
-<?php if (empty($P)): ?><div class="ncs empty"><div class="ei">💭</div><div class="et">还没有说说<br>去后台发布第一条吧~</div></div>
+<div class="sh"><span class="si"><?php echo m_ico('comment',16); ?></span><span class="st">甜蜜说说</span><span class="sc"><?php echo count($P); ?></span></div>
+<?php if (empty($P)): ?><div class="ncs empty"><div class="ei"><?php echo m_ico('comment',40); ?></div><div class="et">还没有说说<br>去后台发布第一条吧~</div></div>
 <?php else: foreach($P as $po) echo renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments); endif; endif; ?>
 
 <?php if ($pg === 'album' && ($C['show_album'] ?? 1)): ?>
-<div class="sh"><span class="si">📷</span><span class="st">我们的相册</span><span class="sc"><?php echo count($PH); ?>张</span></div>
-<?php if (empty($PH)): ?><div class="ncs empty"><div class="ei">🖼️</div><div class="et">相册还是空的<br>去后台添加照片吧~</div></div>
+<div class="sh"><span class="si"><?php echo m_ico('album',16); ?></span><span class="st">我们的相册</span><span class="sc"><?php echo count($PH); ?>张</span></div>
+<?php if (empty($PH)): ?><div class="ncs empty"><div class="ei"><?php echo m_ico('album',40); ?></div><div class="et">相册还是空的<br>去后台添加照片吧~</div></div>
 <?php else: ?><div class="ag"><?php foreach($PH as $ph): ?><div class="ai" onclick="l('<?php echo htmlspecialchars($ph['url'],ENT_QUOTES); ?>')"><img src="<?php echo htmlspecialchars($ph['url']); ?>" loading="lazy"><?php if(!empty($ph['title'])):?><div class="cap"><?php echo htmlspecialchars($ph['title']); ?></div><?php endif; ?></div><?php endforeach; ?></div><?php endif; endif; ?>
 
 <?php if ($pg === 'places' && ($C['show_places'] ?? 1)): ?>
-<div class="sh"><span class="si">📍</span><span class="st">去过的地方</span><span class="sc"><?php echo count($PL); ?>个</span></div>
-<?php if (empty($PL)): ?><div class="ncs empty"><div class="ei">🗺️</div><div class="et">还没有记录一起去过的地方</div></div>
-<?php else: foreach($PL as $pl): ?><div class="ncs plc"><?php if (!empty($pl['image'])): ?><img class="pimg" src="<?php echo htmlspecialchars($pl['image']); ?>" onclick="l('<?php echo htmlspecialchars($pl['image'],ENT_QUOTES); ?>')" loading="lazy"><?php else: ?><div class="pimg ni">📍</div><?php endif; ?><div class="pin"><div class="pn"><?php echo htmlspecialchars($pl['name']??'未知地点'); ?></div><div class="pd">🕐 <?php echo htmlspecialchars($pl['time']??''); ?></div><?php if (!empty($pl['note'])): ?><div class="pnote"><?php echo nl2br(htmlspecialchars($pl['note'])); ?></div><?php endif; ?></div></div><?php endforeach; endif; endif; ?>
+<div class="sh"><span class="si"><?php echo m_ico('place',16); ?></span><span class="st">去过的地方</span><span class="sc"><?php echo count($PL); ?>个</span></div>
+<?php if (empty($PL)): ?><div class="ncs empty"><div class="ei"><?php echo m_ico('place',40); ?></div><div class="et">还没有记录一起去过的地方</div></div>
+<?php else: foreach($PL as $pl): ?><div class="ncs plc"><?php if (!empty($pl['image'])): ?><img class="pimg" src="<?php echo htmlspecialchars($pl['image']); ?>" onclick="l('<?php echo htmlspecialchars($pl['image'],ENT_QUOTES); ?>')" loading="lazy"><?php else: ?><div class="pimg ni"><?php echo m_ico('place',26); ?></div><?php endif; ?><div class="pin"><div class="pn"><?php echo htmlspecialchars($pl['name']??'未知地点'); ?></div><div class="pd"><span class="lbl-ico"><?php echo m_ico("clock", 15); ?></span> <?php echo htmlspecialchars($pl['time']??''); ?></div><?php if (!empty($pl['note'])): ?><div class="pnote"><?php echo nl2br(htmlspecialchars($pl['note'])); ?></div><?php endif; ?></div></div><?php endforeach; endif; endif; ?>
 
 <?php if ($pg === 'todos' && ($C['show_todos'] ?? 1)): ?>
-<div class="sh"><span class="si">✅</span><span class="st">一起完成的事</span><span class="sc"><?php echo $DN.'/'.count($T); ?></span></div>
-<?php if (empty($T)): ?><div class="ncs empty"><div class="ei">📋</div><div class="et">清单还是空的<br>去后台添加想一起做的事吧~</div></div>
+<div class="sh"><span class="si"><?php echo m_ico('todo',16); ?></span><span class="st">一起完成的事</span><span class="sc"><?php echo $DN.'/'.count($T); ?></span></div>
+<?php if (empty($T)): ?><div class="ncs empty"><div class="ei"><?php echo m_ico('todo',40); ?></div><div class="et">清单还是空的<br>去后台添加想一起做的事吧~</div></div>
 <?php else: usort($T,function($a,$b){return ($a['done']??0)-($b['done']??0)?:strtotime($b['time'])-strtotime($a['time']);}); foreach($T as $td): $isd=!empty($td['done']); ?>
 <div class="ti"><div class="tc2 <?php echo $isd?'done':''; ?>"><?php echo $isd?'✅':'⬜'; ?></div><div class="tcnt"><div class="tt <?php echo $isd?'dt':''; ?>"><?php echo htmlspecialchars($td['title']); ?></div><div class="tm"><?php echo $isd?'✅ 已完成 · '.htmlspecialchars($td['done_time']??''):'📝 创建于 '.htmlspecialchars($td['time']??''); ?></div><?php if (!empty($td['note'])): ?><div class="tnote"><?php echo htmlspecialchars($td['note']); ?></div><?php endif; ?></div></div>
 <?php endforeach; endif; endif; ?>
 
 <?php if ($pg === 'post'): $postId = $_GET['id'] ?? ''; $postDetail = null;
     foreach ($P as $po) { if ($po['id'] === $postId) { $postDetail = $po; break; } }
-    if ($postDetail): echo renderPostCard($postDetail, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, false, true); else: ?>
-<div class="ncs empty"><div class="ei">😅</div><div class="et">说说不存在</div></div>
-<?php endif; ?>
-<div class="back" style="text-align:center;margin-top:20px"><a href="?p=posts" style="color:var(--pri);text-decoration:none;font-size:.9em">← 返回说说列表</a></div>
+    if ($postDetail):
+        echo renderPostCard($postDetail, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, false, true);
+        $rwx = $C['reward_wx_img'] ?? ''; $rali = $C['reward_alipay_img'] ?? '';
+        if ($rwx !== '' || $rali !== ''): ?>
+<div class="reward-bar" style="text-align:center;margin-top:14px"><button type="button" class="reward-btn" onclick="openReward()"><?php echo m_ico('gift',17); ?> 赞赏</button></div>
+<?php endif; else: ?>
+<div class="ncs empty"><div class="ei"><?php echo m_ico('alert',40); ?></div><div class="et">说说不存在</div></div>
+<?php endif; endif; ?>
+<?php if ($pg === 'post'): ?>
+<div class="back" style="text-align:center;margin-top:20px"><a href="?p=posts" style="color:var(--pri);text-decoration:none;font-size:.9em;display:inline-flex;align-items:center;gap:6px"><?php echo m_ico('reply',14); ?> 返回说说列表</a></div>
 <?php endif; ?>
 
 <?php if ($isCustomPage): ?>
-<div class="sh"><span class="si"><?php echo htmlspecialchars($cp['icon']??'📄');?></span><span class="st"><?php echo htmlspecialchars($cp['title']);?></span></div>
+<div class="sh"><span class="si"><?php echo htmlspecialchars($cp['icon']??'');?></span><span class="st"><?php echo htmlspecialchars($cp['title']);?></span></div>
 <div class="nc cp-content"><?php echo $cp['content'] ?? '<p>暂无内容</p>'; ?></div>
 <?php endif; ?>
 
 <?php if ($me): ?>
 <div class="nc" id="post_box" style="display:none">
-<div class="card-title" style="font-size:1.05em;font-weight:700;color:var(--tx);margin-bottom:14px">✏️ 发说说</div>
-<?php if ($userPostMsg): ?><div style="padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:.85em;background:var(--ok);color:var(--oktx)">✅ <?php echo htmlspecialchars($userPostMsg); ?></div><?php endif; ?>
-<?php if ($userPostErr): ?><div style="padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:.85em;background:var(--err);color:var(--errtx)">❌ <?php echo htmlspecialchars($userPostErr); ?></div><?php endif; ?>
+<div class="card-title" style="font-size:1.05em;font-weight:700;color:var(--tx);margin-bottom:14px"><?php echo m_ico('edit',18); ?> 发说说</div>
+<?php if ($userPostMsg): ?><div style="padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:.85em;background:var(--ok);color:var(--oktx)"><?php echo m_ico('check',14); ?> <?php echo htmlspecialchars($userPostMsg); ?></div><?php endif; ?>
+<?php if ($userPostErr): ?><div style="padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:.85em;background:var(--err);color:var(--errtx)"><?php echo m_ico('alert',14); ?> <?php echo htmlspecialchars($userPostErr); ?></div><?php endif; ?>
 <form method="post" enctype="multipart/form-data">
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="user_post">
-<div class="fg"><label>💬 说点什么</label><textarea name="content" rows="3" placeholder="分享你的想法..." required maxlength="2000" style="width:100%;padding:11px 15px;background:var(--input);border:none;border-radius:10px;box-shadow:inset 2px 2px 6px rgba(0,0,0,0.04);font-size:.92em;color:var(--tx);outline:none;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;resize:vertical"></textarea></div>
+<div class="fg"><label><?php echo m_ico('comment',14); ?> 说点什么</label><textarea name="content" rows="3" placeholder="分享你的想法..." required maxlength="2000" style="width:100%;padding:11px 15px;background:var(--input);border:none;border-radius:10px;box-shadow:inset 2px 2px 6px rgba(0,0,0,0.04);font-size:.92em;color:var(--tx);outline:none;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;resize:vertical"></textarea></div>
 <div style="display:flex;gap:10px;flex-wrap:wrap">
-<label style="flex:1;min-width:120px"><span style="font-size:.78em;color:var(--tl)">📷 图片（可多选）</span><input type="file" name="images[]" multiple style="width:100%;margin-top:4px;font-size:.8em"></label>
-<label style="flex:1;min-width:120px"><span style="font-size:.78em;color:var(--tl)">🎬 视频</span><input type="file" name="video" accept="video/*" style="width:100%;margin-top:4px;font-size:.8em"></label>
-<label style="flex:1;min-width:120px"><span style="font-size:.78em;color:var(--tl)">🎵 音乐</span><input type="file" name="music" accept="audio/*" style="width:100%;margin-top:4px;font-size:.8em"></label>
+<label style="flex:1;min-width:120px"><span style="font-size:.78em;color:var(--tl)"><?php echo m_ico('camera',13); ?> 图片（可多选）</span><input type="file" name="images[]" multiple style="width:100%;margin-top:4px;font-size:.8em"></label>
+<label style="flex:1;min-width:120px"><span style="font-size:.78em;color:var(--tl)"><?php echo m_ico('video',13); ?> 视频</span><input type="file" name="video" accept="video/*" style="width:100%;margin-top:4px;font-size:.8em"></label>
+<label style="flex:1;min-width:120px"><span style="font-size:.78em;color:var(--tl)"><?php echo m_ico('music',13); ?> 音乐</span><input type="file" name="music" accept="audio/*" style="width:100%;margin-top:4px;font-size:.8em"></label>
 </div>
-<button type="submit" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;font-size:.9em;font-weight:700;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,0.06);color:var(--pri)">💕 发布</button>
+<button type="submit" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;font-size:.9em;font-weight:700;cursor:pointer;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,0.06);color:var(--pri)"><?php echo m_ico('send',15); ?> 发布</button>
 </form>
 </div>
 <?php endif; ?>
@@ -846,27 +955,41 @@ fetch(apiUrl)
 </div>
 
 <nav class="bn">
-<?php echo NI('home',$pg,'🏠'); ?>
-<?php echo NI('posts',$pg,'💬'); ?>
-<?php echo NI('album',$pg,'📷'); ?>
-<?php echo NI('places',$pg,'📍'); ?>
-<?php echo NI('todos',$pg,'✅'); ?>
+<?php echo NI('home',$pg,'home'); ?>
+<?php echo NI('posts',$pg,'comment'); ?>
+<?php echo NI('album',$pg,'album'); ?>
+<?php echo NI('places',$pg,'place'); ?>
+<?php echo NI('todos',$pg,'todo'); ?>
 <?php foreach($PG as $cpg): ?>
-<a href="?p=<?php echo htmlspecialchars($cpg['slug']);?>"<?php echo $pg===$cpg['slug']?' class="active"':'';?>><span class="ni"><?php echo htmlspecialchars($cpg['icon']??'📄');?></span><span class="nl"><?php echo htmlspecialchars($cpg['title']);?></span></a>
+<a href="?p=<?php echo htmlspecialchars($cpg['slug']);?>"<?php echo $pg===$cpg['slug']?' class="active"':'';?>><span class="ni"><?php echo htmlspecialchars($cpg['icon']??'');?></span><span class="nl"><?php echo htmlspecialchars($cpg['title']);?></span></a>
 <?php endforeach; ?>
 <?php if ($me): ?>
-<a href="#" onclick="document.getElementById('post_box').style.display='block';document.getElementById('post_box').scrollIntoView({behavior:'smooth'})" style="color:var(--oktx)"><span class="ni">✏️</span><span class="nl">发说说</span></a>
-<a href="user.php"><span class="ni">👤</span><span class="nl"><?php echo htmlspecialchars($me['nickname']); ?></span></a>
-<a href="?act=logout"><span class="ni">🚪</span><span class="nl">退出</span></a>
+<a href="#" onclick="document.getElementById('post_box').style.display='block';document.getElementById('post_box').scrollIntoView({behavior:'smooth'})" style="color:var(--oktx)"><span class="ni"><?php echo m_ico('edit',18); ?></span><span class="nl">发说说</span></a>
+<a href="user.php"><span class="ni"><?php echo m_ico('user',18); ?></span><span class="nl"><?php echo htmlspecialchars($me['nickname']); ?></span></a>
+<a href="?act=logout"><span class="ni"><?php echo m_ico('logout',18); ?></span><span class="nl">退出</span></a>
 <?php else: ?>
-<a href="login.php"><span class="ni">🔑</span><span class="nl">登录</span></a>
+<a href="login.php"><span class="ni"><?php echo m_ico('lock',18); ?></span><span class="nl">登录</span></a>
 <?php endif; ?>
 <?php if (isset($_SESSION['cp_admin'])): ?>
-<a href="admin/index.php"><span class="ni">⚙️</span><span class="nl">管理</span></a>
+<a href="admin/index.php"><span class="ni"><?php echo m_ico('config',18); ?></span><span class="nl">管理</span></a>
 <?php endif; ?>
 </nav>
 
 <div class="lb" id="lbx" onclick="this.classList.remove('show')"><span class="lcl">&times;</span><img id="lbi" src=""></div>
+<?php $rwxQ = $C['reward_wx_img'] ?? ''; $raliQ = $C['reward_alipay_img'] ?? ''; if ($rwxQ !== '' || $raliQ !== ''): ?>
+<div class="reward-mask" id="rewardMask" onclick="if(event.target===this)closeReward()">
+<div class="reward-modal">
+<div class="reward-head"><?php echo m_ico('gift',17); ?> 赞赏支持</div>
+<div class="reward-tabs">
+<button type="button" class="rtab active" id="rtab-wx" onclick="switchReward('wx')">微信</button>
+<button type="button" class="rtab" id="rtab-ali" onclick="switchReward('ali')">支付宝</button>
+</div>
+<div class="reward-body" id="rbody-wx"><?php if ($rwxQ !== ''): ?><img src="<?php echo htmlspecialchars($rwxQ); ?>" class="reward-qr" alt="微信收款码"><div class="reward-tip">微信扫一扫，赞赏支持</div><?php else: ?><div class="reward-empty">暂未配置微信收款码</div><?php endif; ?></div>
+<div class="reward-body" id="rbody-ali" style="display:none"><?php if ($raliQ !== ''): ?><img src="<?php echo htmlspecialchars($raliQ); ?>" class="reward-qr" alt="支付宝收款码"><div class="reward-tip">支付宝扫一扫，赞赏支持</div><?php else: ?><div class="reward-empty">暂未配置支付宝收款码</div><?php endif; ?></div>
+<button type="button" class="reward-close" onclick="closeReward()">关 闭</button>
+</div>
+</div>
+<?php endif; ?>
 <script>
 function l(s){event.stopPropagation();document.getElementById('lbi').src=s;document.getElementById('lbx').classList.add('show')}
 !function(){var c=document.getElementById('pcs'),e=['❤️','💕','💖','💗','💝','✨','🌸','💫','🕊️'];setInterval(function(){var p=document.createElement('span');p.className='pt';p.textContent=e[Math.floor(Math.random()*e.length)];p.style.left=Math.random()*100+'%';p.style.animationDuration=(4+Math.random()*6)+'s';p.style.fontSize=(14+Math.random()*22)+'px';c.appendChild(p);setTimeout(function(){p.remove()},8000)},500)}();
@@ -1044,7 +1167,7 @@ function insertImageUrl(inputId) {
     function apply(t){
         document.documentElement.setAttribute('data-theme',t);
         var b=document.getElementById('themeToggle');
-        if(b) b.textContent = (t==='dark') ? '☀️' : '🌙';
+        if(b){ b.innerHTML = (t==='dark') ? '<?php echo m_ico('sun',17); ?>' : '<?php echo m_ico('moon',17); ?>'; }
     }
     var saved=localStorage.getItem(KEY);
     apply(saved==='dark' ? 'dark' : 'milk');

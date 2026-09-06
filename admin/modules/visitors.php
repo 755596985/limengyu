@@ -15,7 +15,7 @@ if (($MOD_RUN ?? '') === 'handle') {
 if (($MOD_RUN ?? '') === 'render') {
 ?>
 <?php if ($tab === 'visitors'): ?>
-<h2 class="card-title">📊 访客记录</h2>
+<h2 class="card-title"><span class="lbl-ico"><?php echo m_ico("chart", 15); ?></span> 访客记录</h2>
 <?php $vlist = visitors_get(); if (empty($vlist)): ?>
 <p style="text-align:center;color:var(--tl);padding:30px">暂无访客记录</p>
 <?php else: $vlist = array_reverse($vlist); $total = count($vlist); $perpage = 20; $page = max(1, intval($_GET['page'] ?? 1)); $total_pages = ceil($total / $perpage); if ($page > $total_pages) $page = $total_pages; $offset = ($page - 1) * $perpage; $vlist_page = array_slice($vlist, $offset, $perpage); ?>
