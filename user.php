@@ -215,5 +215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
 <div class="back"><a href="index.php">← 返回首页</a> · <a href="?act=logout">退出登录</a></div>
 </div>
+<!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
+<div style="text-align:center;font-size:.75em;color:#999;opacity:.8;padding:14px 0 10px">© 2026 情侣小窝</div>
 </body>
 </html>
