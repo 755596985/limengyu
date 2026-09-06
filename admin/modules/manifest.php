@@ -18,7 +18,6 @@ return [
     ['key' => 'users', 'file' => 'users.php', 'label' => '用户', 'icon' => 'users', 'acts' => ["delete_user", "user_edit", "user_refresh_ip", "user_toggle_status"], 'enabled' => true],
     ['key' => 'config', 'file' => 'config.php', 'label' => '设置', 'icon' => 'config', 'acts' => ["save_config"], 'enabled' => true],
     ['key' => 'password', 'file' => 'password.php', 'label' => '密码', 'icon' => 'lock', 'acts' => ["change_password"], 'enabled' => true],
-    ['key' => 'about', 'file' => 'about.php', 'label' => '关于', 'icon' => 'about', 'acts' => ["save_about"], 'enabled' => true],
     ['key' => 'files', 'file' => 'files.php', 'label' => '文件', 'icon' => 'file', 'acts' => ["upload_file", "delete_file", "delete_dir", "save_file", "mkdir_file"], 'enabled' => true],
     ['key' => 'filter', 'file' => 'filter.php', 'label' => '敏感词', 'icon' => 'ban', 'acts' => ["add_word", "delete_word"], 'enabled' => true],
     ['key' => 'visitors', 'file' => 'visitors.php', 'label' => '访客', 'icon' => 'chart', 'acts' => ["clear_visitors"], 'enabled' => true],
