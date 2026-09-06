@@ -1179,7 +1179,5 @@ function insertImageUrl(inputId) {
     };
 })();
 </script>
-<!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
-<div class="site-copy" style="text-align:center;font-size:.78em;color:#999;opacity:.8;padding:18px 0 14px">© 2026 情侣小窝 · <a href="https://github.com/755596985/limengyu" style="color:#999;text-decoration:none">开源版</a></div>
 </body>
 </html>
