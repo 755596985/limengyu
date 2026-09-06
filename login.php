@@ -108,8 +108,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 <div class="link"><a href="login.php?admin=1" style="color:var(--tl);font-size:.75em">管理员登录</a></div>
 <?php endif; ?>
 <div class="link"><a href="index.php">← 返回首页</a></div>
-</div>
 <!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
-<div style="text-align:center;font-size:.75em;color:#999;opacity:.8;padding:14px 0 10px">© 2026 情侣小窝</div>
+<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px dashed rgba(0,0,0,.08);font-size:.72em;color:#999">© 2026 情侣小窝</div>
+</div>
 </body>
 </html>
