@@ -39,7 +39,7 @@ $st = ($config['site_title'] ?? '') ?: '情侣小窝';
 [data-theme="dark"]{--bg:#1f1b18;--sd:rgba(0,0,0,0.55);--sl:rgba(255,255,255,0.05);--pri:#ec9d94;--tx:#ece5df;--tl:#a89a92;--card:#2b2522;--err:#45272b;--errtx:#ee8d9b}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center}
-.login-box{background:var(--card);border:1px solid #8b5cf6;border-radius:24px;box-shadow:8px 8px 24px var(--sd),-8px -8px 24px var(--sl);padding:40px 36px;width:360px;max-width:90vw;text-align:center}
+.login-box{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:1px solid transparent;border-radius:24px;box-shadow:8px 8px 24px var(--sd),-8px -8px 24px var(--sl);padding:40px 36px;width:360px;max-width:90vw;text-align:center}
 .login-box .lock{width:80px;height:80px;border-radius:50%;box-shadow:6px 6px 16px var(--sd),-6px -6px 16px var(--sl);display:inline-flex;align-items:center;justify-content:center;font-size:2.2em;margin-bottom:20px}
 .login-box h2{font-size:1.4em;color:var(--tx);letter-spacing:2px;margin-bottom:6px}
 .login-box .sub{font-size:.85em;color:var(--tl);margin-bottom:28px}
