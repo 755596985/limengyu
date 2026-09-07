@@ -2,6 +2,8 @@
 /**
  * 情侣小窝 — 公共引导：会话、PDO、CSRF、上传、工具函数
  */
+// 程序版本号：发版时仅需修改此处（页面不展示，用于仓库/代码版本追踪）
+define('LIMENGYU_VERSION', '1.1.0');
 // 统一中国时区，避免服务器时区偏差导致纪念日天数计算少一天
 date_default_timezone_set('Asia/Shanghai');
 
