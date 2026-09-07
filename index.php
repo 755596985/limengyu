@@ -534,6 +534,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .hero h1{font-size:1.5em;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,#ffc7d8,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
 .hero .sub{font-size:.85em;color:var(--tl);letter-spacing:1px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px}
 .hero .sub .vtag{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,#ffe3ea,#ffd0dc);border:1px solid rgba(255,94,138,.28);color:#ff5e8a;font-size:.76em;font-weight:600;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 4px rgba(255,94,138,.15)}
+.hero .sub .nm{font-weight:800;background:linear-gradient(135deg,#ff8eae,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.5px}
+.hero .sub .spk{display:inline-flex;color:#ff8eae;flex-shrink:0}
+.hero .sub .spk svg{width:13px;height:13px;display:block;animation:spk 2.2s ease-in-out infinite}
+@keyframes spk{0%,100%{transform:scale(1) rotate(0deg);opacity:.8}50%{transform:scale(1.2) rotate(45deg);opacity:1}}
 .tc{text-align:center;position:relative;overflow:hidden}
 .tc .tl{font-size:.82em;color:var(--tl);letter-spacing:3px;margin-bottom:8px}
 .tc .tn{font-size:4em;font-weight:900;letter-spacing:4px;background:linear-gradient(180deg,var(--pri),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin:8px 0}
@@ -791,7 +795,7 @@ svg.ico{vertical-align:-.12em;display:inline-block;flex:none}
 <div class="av"><?php echo AV($a2, '👧'); ?></div>
 </div>
 <h1><?php echo htmlspecialchars($st); ?></h1>
-<div class="sub">✦ <?php echo htmlspecialchars($n1); ?> <span class="vtag">唯一认证.中国</span> <?php echo htmlspecialchars($n2); ?> ✦</div>
+<div class="sub"><span class="spk"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c.8 6.3 5.7 11.2 12 12-6.3.8-11.2 5.7-12 12-.8-6.3-5.7-11.2-12-12C6.3 11.2 11.2 6.3 12 0z"/></svg></span><span class="nm"><?php echo htmlspecialchars($n1); ?></span><span class="vtag">唯一认证.中国</span><span class="nm"><?php echo htmlspecialchars($n2); ?></span><span class="spk"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c.8 6.3 5.7 11.2 12 12-6.3.8-11.2 5.7-12 12-.8-6.3-5.7-11.2-12-12C6.3 11.2 11.2 6.3 12 0z"/></svg></span></div>
 <?php
 echo '<div class="yiyan-box" id="yiyan-box" style="text-align:center;padding:0 0 8px">';
 echo '<div class="yiyan-text" id="yiyan-text" style="font-size:.82em;color:var(--tl);font-style:italic;line-height:1.5;min-height:1.2em"></div>';
