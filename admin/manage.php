@@ -114,7 +114,7 @@ if (isset($_GET['logout'])) { unset($_SESSION['cp_admin']); session_regenerate_i
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
 .main{padding:16px 14px 90px;max-width:900px;margin:0 auto}
-.card{background:var(--card);border:1px solid #8b5cf6;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:24px;margin-bottom:20px}
+.card{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:1px solid transparent;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:24px;margin-bottom:20px}
 .card-title{font-size:1.05em;font-weight:700;color:var(--tx);margin-bottom:18px}
 .msg{padding:12px 18px;border-radius:10px;margin-bottom:16px;font-size:.88em}
 .msg.success{background:var(--ok);color:var(--oktx)}
@@ -200,7 +200,7 @@ select.neo{cursor:pointer}
 .action-btns{display:flex;gap:4px;flex-wrap:wrap}
 /* 编辑弹窗 */
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-.modal-box{background:var(--card);border:1px solid #8b5cf6;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;padding:24px}
+.modal-box{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:1px solid transparent;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;padding:24px}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .modal-title{font-size:1.05em;font-weight:700;color:var(--tx)}
 .modal-close{background:none;border:none;font-size:1.3em;color:var(--tl);cursor:pointer;padding:4px 8px;border-radius:8px;transition:all .2s}
