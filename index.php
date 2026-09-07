@@ -525,7 +525,7 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
 [data-theme="dark"]{--pri:#ec9d94;--pl:#b5736c;--ac:#c0a387;--tx:#ece5df;--tl:#a89a92;--bg:#1f1b18;--card:#2b2522;--soft:#332c28;--input:#362e2a;--prisoft:rgba(236,157,148,.12);--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.05);--ok:#1e3a28;--oktx:#8fd6a8;--err:#45272b;--errtx:#ee8d9b}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden;line-height:1.6}
 [data-theme="dark"] body{background-blend-mode:multiply}
-.main-container{max-width:520px;margin:0 auto;padding:16px 16px 110px;position:relative;z-index:1}
+.main-container{max-width:520px;margin:0 auto;padding:16px 16px 28px;position:relative;z-index:1}
 .nc{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ffc7d8,#ff8eae) border-box;border:1px solid transparent;border-radius:var(--r);box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:24px;margin-bottom:16px}
 .ncs{padding:16px;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ffc7d8,#ff8eae) border-box;border:1px solid transparent;border-radius:var(--rs);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:12px}
 .hero{text-align:center;padding:30px 0 20px}
@@ -542,12 +542,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .hero .sub .spk{display:inline-flex;color:#ff8eae;flex-shrink:0}
 .hero .sub .spk svg{width:13px;height:13px;display:block;animation:spk 2.2s ease-in-out infinite}
 @keyframes spk{0%,100%{transform:scale(1) rotate(0deg);opacity:.8}50%{transform:scale(1.2) rotate(45deg);opacity:1}}
-.tc{text-align:center;position:relative;overflow:hidden;z-index:0}
+.tc{text-align:center;position:relative;overflow:hidden;z-index:0;padding:18px 20px 14px}
 .tc::before{content:'';position:absolute;left:0;right:0;top:0;height:70px;background:radial-gradient(circle at 50% 0%,rgba(255,199,216,.45),transparent 70%);pointer-events:none;z-index:-1}
 .tc .tl{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:999px;background:linear-gradient(135deg,#ffe3ea,#ffd0dc);border:1px solid rgba(255,94,138,.25);color:#ff5e8a;font-size:.8em;font-weight:700;letter-spacing:2px;margin-bottom:10px;box-shadow:0 2px 8px rgba(255,94,138,.12)}
-.tc .tn{font-size:4em;font-weight:900;letter-spacing:4px;background:linear-gradient(180deg,#ff9eb5,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin:8px 0;filter:drop-shadow(0 2px 10px rgba(255,94,138,.22))}
+.tc .tn{font-size:4em;font-weight:900;letter-spacing:4px;background:linear-gradient(180deg,#ff9eb5,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin:4px 0 2px;filter:drop-shadow(0 2px 10px rgba(255,94,138,.22))}
 .tc .td{font-size:.9em;color:#e0728e;font-weight:600;margin-top:4px;letter-spacing:1px}
-.tc .tdt{font-size:.78em;color:#d98ba2;margin-top:12px;padding-top:12px;border-top:1px dashed rgba(255,94,138,.25)}
+.tc .tdt{font-size:.76em;color:#d98ba2;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,94,138,.25)}
 .sr{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .ss{text-align:center;padding:14px 8px}
 .ss .n{font-size:1.5em;font-weight:800;color:#ff5e8a;line-height:1;margin-bottom:4px}
@@ -691,21 +691,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .pts{position:fixed;inset:0;pointer-events:none;z-index:0}
 .pt{position:absolute;animation:floatUp 5s ease-in infinite;opacity:0}
 @keyframes floatUp{0%{transform:translateY(105vh)scale(0);opacity:0}10%{opacity:.5}90%{opacity:.15}100%{transform:translateY(-5vh)scale(1.2);opacity:0}}
-.ft{text-align:center;padding:20px 12px 8px;color:var(--tl);font-size:.7em;line-height:1.8}
+.ft{text-align:center;padding:20px 12px 100px;color:var(--tl);font-size:.7em;line-height:1.8}
 .ft a{color:var(--tl);text-decoration:none;border-bottom:1px dashed var(--line)}
 .ft a:hover{color:var(--pri);border-bottom-color:var(--pri)}
-/* 纪念日卡片 */
-.anniversary-card{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ffc7d8,#ff8eae) border-box;border:1px solid transparent;border-radius:var(--r);box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px}
-.ac-banner{background:linear-gradient(135deg,#fff0f4,#ffe1ea);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.ac-banner-t{font-size:.74em;color:#d4786e;font-weight:600}
-.ac-banner-n{font-size:.92em;font-weight:700;color:var(--tx)}
-.ac-num{text-align:center;flex-shrink:0;background:#fff;border-radius:12px;padding:8px 12px;box-shadow:0 1px 6px rgba(212,120,110,.18)}
-.ac-num-v{font-size:1.25em;font-weight:800;color:#ff5e8a;line-height:1.1}
-.ac-num-l{font-size:.64em;color:var(--tl)}
-[data-theme="dark"] .ac-banner{background:linear-gradient(135deg,rgba(236,157,148,.16),rgba(236,157,148,.08))}
-[data-theme="dark"] .ac-banner-t{color:#ff9eb5}
-[data-theme="dark"] .ac-num{background:var(--card);box-shadow:0 1px 6px rgba(0,0,0,.25)}
-@media(min-width:600px){.main-container{padding:24px 24px 110px}.ag{grid-template-columns:repeat(3,1fr)}}
+/* 纪念日滑动条（内嵌于计时卡片） */
+.tc .acm-scroll{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:1px 1px 5px;scrollbar-width:none}
+.tc .acm-scroll::-webkit-scrollbar{display:none}
+.acm-item{flex-shrink:0;scroll-snap-align:center;min-width:108px;border-radius:13px;padding:10px 10px 9px;background:rgba(255,255,255,.6);border:1px solid rgba(255,94,138,.14);text-align:center;box-shadow:0 1px 4px rgba(255,94,138,.07)}
+[data-theme="dark"] .acm-item{background:rgba(255,255,255,.05);border-color:rgba(255,94,138,.2)}
+.acm-item.done{opacity:.62;border-style:dashed;background:rgba(255,255,255,.32)}
+[data-theme="dark"] .acm-item.done{background:rgba(255,255,255,.03)}
+.acm-item.next{background:linear-gradient(135deg,#ff9eb5,#ff5e8a);border-color:transparent;box-shadow:0 3px 12px rgba(255,94,138,.35)}
+.acm-t{font-size:.92em;font-weight:800;color:#d45976;white-space:nowrap}
+.acm-item.next .acm-t{color:#fff}
+.acm-item.done .acm-t{color:#c08b98}
+.acm-d{font-size:.62em;color:#d98ba2;margin-top:4px;letter-spacing:.4px}
+.acm-item.next .acm-d{color:rgba(255,255,255,.85)}
+.acm-item.done .acm-d{color:#c9a0ab}
+.acm-r{font-size:.6em;margin-top:7px;color:#e0728e;font-weight:700;white-space:nowrap}
+.acm-item.next .acm-r{color:#fff;background:rgba(255,255,255,.26);border-radius:16px;display:inline-block;padding:2px 9px}
+.acm-item.done .acm-r{color:#c9a0ab}
+.acm-item.wait .acm-r{color:#e0b3c0}
+.tc .av-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:13px;padding-top:10px;border-top:1px dashed rgba(255,94,138,.2);font-size:.62em;color:#d98ba2;font-weight:600;letter-spacing:.3px}
+.tc .av-foot b{color:#ff5e8a;font-weight:800}
+.tc .anniv-tab{position:absolute;top:10px;right:12px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,94,138,.28);background:linear-gradient(135deg,#ffe3ea,#ffd0dc);color:#ff5e8a;font-size:.68em;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 1px 4px rgba(255,94,138,.16);z-index:2;line-height:1.4}
+.tc .anniv-tab:active{transform:scale(.96)}
+.tc #viewAnniv{display:none;text-align:left;min-height:168px;flex-direction:column;justify-content:center;box-sizing:border-box}
+.tc.show-anniv #viewTimer{display:none}
+.tc.show-anniv #viewAnniv{display:flex}
+.tc.show-anniv .acm-scroll{width:100%;padding:2px 0 4px}
+.tc .av-tt{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.8em;color:#ff5e8a;font-weight:700;letter-spacing:1px;padding:2px 0 10px}
+@media(min-width:600px){.main-container{padding:24px 24px 28px}.ag{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:480px){.cmt-reply-form{padding-left:0}.cmt-replies-inline{padding-left:0}.cmt-expand-btn{padding-left:0}.cmt-admin-reply{margin-left:0}.cmt-expand-replies{padding-left:0}.cmt-expand-replies-hidden{padding-left:0}.cmt-edit-form{margin-left:0}}
 .bn a[href="?p=home"] .ni{color:#e85d5d}
 .bn a[href="?p=posts"] .ni{color:#5c9ce6}
@@ -876,15 +892,16 @@ function switchReward(k){
 <?php if ($commentErr): ?><div class="cmt-msg err"><?php echo m_ico('alert',15); ?> <?php echo htmlspecialchars($commentErr); ?></div><?php endif; ?>
 
 <?php if ($pg === 'home'): ?>
-<div class="nc tc">
+<div class="nc tc" id="tcCard">
+<button type="button" class="anniv-tab" id="annivTab"><span id="annivTabIco">♡</span><span id="annivTabTx">纪念日</span></button>
+<div id="viewTimer">
 <div class="tl"><?php echo htmlspecialchars($C['love_title'] ?? '已经在一起'); ?></div>
 <div class="tn" id="dc"><?php echo $ds; ?></div>
 <div class="td"><?php echo $y; ?>年 <?php echo $m; ?>个月 <?php echo $d; ?>天</div>
 <div class="tdt"><?php echo m_ico('calendar',13); ?> <?php echo date('Y/m/d', strtotime($ld)); ?> → ∞</div>
 </div>
-
 <?php
-// ===== 纪念日卡片：展示恋爱里程碑（基于 love_date 计算）=====
+// ===== 纪念日里程碑（基于 love_date 计算）=====
 $_ldStart = strtotime(date('Y-m-d', strtotime($ld)));
 $_today = strtotime(date('Y-m-d'));
 $_days = (int)(($_today - $_ldStart) / 86400);
@@ -901,27 +918,42 @@ $_miles = [
     ['n'=>1500,  'label'=>'1500天'],
     ['n'=>2000,  'label'=>'2000天'],
 ];
-$_done = []; $_next = null;
-foreach ($_miles as $_mk) {
-    if ($_days >= $_mk['n']) { $_done[] = $_mk; }
-    elseif ($_next === null) { $_next = $_mk; }
+$_nxIdx = null;
+foreach ($_miles as $_i => &$_mk) {
+    $_mk['date'] = date('Y/m/d', $_ldStart + $_mk['n'] * 86400);
+    $_mk['left'] = $_mk['n'] - $_days;
+    if ($_nxIdx === null && $_mk['n'] > $_days) { $_nxIdx = $_i; }
 }
-if ($_next === null) { $_next = ['n'=>(floor($_days/365)+1)*365, 'label'=>'纪念日']; }
-if (count($_done) > 0 && $_done[count($_done)-1]['n'] === $_days) { $_just = $_done[count($_done)-1]; }
+unset($_mk);
 ?>
-<div class="anniversary-card" style="padding:18px 20px">
-<div class="ac-head" style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:.95em;color:var(--tx);margin-bottom:10px"><?php echo m_ico('heart',16); ?> 纪念日</div>
-<?php if ($_next): ?>
-<?php $_nd = (int)((strtotime('+'.($_next['n'] - $_days).' day', $_ldStart) - $_today)/86400); ?>
-<div class="ac-banner"><div><div class="ac-banner-t">下一个纪念日</div><div class="ac-banner-n"><?php echo htmlspecialchars($_next['label']); ?> · 在一起第 <?php echo $_next['n']; ?> 天</div></div><div class="ac-num"><div class="ac-num-v"><?php echo max(0,$_nd); ?></div><div class="ac-num-l">天后</div></div></div>
-<?php endif; ?>
-<?php if (!empty($_done)): $r = array_slice($_done, -5); ?>
-<div style="font-size:.72em;color:var(--tl);margin-bottom:6px">已走过：</div>
-<div style="display:flex;flex-wrap:wrap;gap:6px"><?php foreach ($r as $_d1): ?><span style="font-size:.7em;background:var(--soft);color:var(--tl);padding:4px 10px;border-radius:20px"><?php echo htmlspecialchars($_d1['label']); ?> ✓</span><?php endforeach; ?></div>
-<?php else: ?>
-<div style="font-size:.74em;color:var(--tl)">第 100 天起，每个特别的日子都会出现在这里</div>
-<?php endif; ?>
+<div id="viewAnniv">
+<div class="av-tt"><?php echo m_ico('heart',12); ?><span>纪念日时间表</span></div>
+<div class="acm-scroll" id="acmScroll">
+<?php foreach ($_miles as $_i => $_mk):
+    $_cls = ($_nxIdx !== null && $_i === $_nxIdx) ? 'next' : ($_mk['n'] <= $_days ? 'done' : 'wait'); ?>
+<div class="acm-item <?php echo $_cls; ?>"<?php echo $_i === $_nxIdx ? ' id="acmNow"' : ''; ?>>
+<div class="acm-t"><?php echo $_mk['n'] <= $_days ? '✓ ' : ''; ?><?php echo htmlspecialchars($_mk['label']); ?></div>
+<div class="acm-d"><?php echo $_mk['date']; ?></div>
+<div class="acm-r"><?php echo $_i === $_nxIdx ? ('还有 ' . max(0,$_mk['left']) . ' 天') : ($_mk['n'] <= $_days ? '已达成' : '· · ·'); ?></div>
 </div>
+<?php endforeach; ?>
+</div>
+<div class="av-foot"><span>已走过 <?php echo $_nxIdx === null ? count($_miles) : $_nxIdx; ?> 个纪念日</span><?php if ($_nxIdx !== null): ?><span>下一站 · <b><?php echo htmlspecialchars($_miles[$_nxIdx]['label']); ?></b> 还有 <?php echo max(0,$_miles[$_nxIdx]['left']); ?> 天</span><?php endif; ?></div>
+</div>
+</div>
+<script>(function(){
+var card=document.getElementById('tcCard'),tab=document.getElementById('annivTab'),
+    ico=document.getElementById('annivTabIco'),tx=document.getElementById('annivTabTx'),
+    sc=document.getElementById('acmScroll'),now=document.getElementById('acmNow');
+function center(){if(now&&sc){try{sc.scrollLeft=Math.max(0,now.offsetLeft-sc.clientWidth/2+now.clientWidth/2);}catch(e){}}}
+tab.addEventListener('click',function(){
+    var a=!card.classList.contains('show-anniv');
+    card.classList.toggle('show-anniv',a);
+    ico.textContent=a?'♥':'♡';
+    tx.textContent=a?'返回计时':'纪念日';
+    if(a){setTimeout(center,40);}
+});
+})();</script>
 
 <div class="sr">
 <?php if ($C['show_comments'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($P); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('comment',15); ?></span>说说</div></div><?php endif; ?>
