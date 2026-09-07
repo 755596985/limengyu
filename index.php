@@ -532,7 +532,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .avd .hi svg{display:block}
 @keyframes heartbeat{0%,42%,100%{transform:scale(1)}8%{transform:scale(1.18)}16%{transform:scale(.97)}24%{transform:scale(1.1)}32%{transform:scale(1)}}
 .hero h1{font-size:1.5em;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,#ffc7d8,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
-.hero .sub{font-size:.85em;color:var(--tl);letter-spacing:1px}
+.hero .sub{font-size:.85em;color:var(--tl);letter-spacing:1px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px}
+.hero .sub .vtag{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,#ffe3ea,#ffd0dc);border:1px solid rgba(255,94,138,.28);color:#ff5e8a;font-size:.76em;font-weight:600;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 4px rgba(255,94,138,.15)}
 .tc{text-align:center;position:relative;overflow:hidden}
 .tc .tl{font-size:.82em;color:var(--tl);letter-spacing:3px;margin-bottom:8px}
 .tc .tn{font-size:4em;font-weight:900;letter-spacing:4px;background:linear-gradient(180deg,var(--pri),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin:8px 0}
@@ -790,7 +791,7 @@ svg.ico{vertical-align:-.12em;display:inline-block;flex:none}
 <div class="av"><?php echo AV($a2, '👧'); ?></div>
 </div>
 <h1><?php echo htmlspecialchars($st); ?></h1>
-<div class="sub">✦ <?php echo htmlspecialchars($n1); ?> & <?php echo htmlspecialchars($n2); ?> ✦</div>
+<div class="sub">✦ <?php echo htmlspecialchars($n1); ?> <span class="vtag">唯一认证.中国</span> <?php echo htmlspecialchars($n2); ?> ✦</div>
 <?php
 echo '<div class="yiyan-box" id="yiyan-box" style="text-align:center;padding:0 0 8px">';
 echo '<div class="yiyan-text" id="yiyan-text" style="font-size:.82em;color:var(--tl);font-style:italic;line-height:1.5;min-height:1.2em"></div>';
