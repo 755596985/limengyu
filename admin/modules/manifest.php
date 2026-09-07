@@ -21,5 +21,6 @@ return [
     ['key' => 'files', 'file' => 'files.php', 'label' => '文件', 'icon' => 'file', 'acts' => ["upload_file", "delete_file", "delete_dir", "save_file", "mkdir_file"], 'enabled' => true],
     ['key' => 'filter', 'file' => 'filter.php', 'label' => '敏感词', 'icon' => 'ban', 'acts' => ["add_word", "delete_word"], 'enabled' => true],
     ['key' => 'visitors', 'file' => 'visitors.php', 'label' => '访客', 'icon' => 'chart', 'acts' => ["clear_visitors"], 'enabled' => true],
+    ['key' => 'backup', 'file' => 'backup.php', 'label' => '备份', 'icon' => 'save', 'acts' => ["download_backup"], 'enabled' => true],
     ['key' => 'modules', 'file' => 'modules.php', 'label' => '模块', 'icon' => 'module', 'acts' => ["save_modules"], 'enabled' => true],
 ];
