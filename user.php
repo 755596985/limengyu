@@ -116,7 +116,7 @@ $st = ($config['site_title'] ?? '') ?: '情侣小窝';
 :root{--pri:#d4786e;--pl:#f0b4ac;--ac:#c7a98c;--tx:#5a4e4a;--tl:#8c7e78;--bg:#f4f4f8}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding-bottom:90px}
 .main{max-width:520px;margin:0 auto;padding:16px}
-.nc{background:#fff;border:1px solid #8b5cf6;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;margin-bottom:16px}
+.nc{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:1px solid transparent;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:20px;margin-bottom:16px}
 .nc h2{font-size:1.1em;font-weight:700;color:var(--tx);margin-bottom:16px}
 .profile{display:flex;align-items:center;gap:16px;padding:20px;background:linear-gradient(135deg,var(--pl),var(--pri));border-radius:16px;color:#fff;margin-bottom:20px}
 .avatar{width:70px;height:70px;border-radius:50%;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:2em;background:rgba(255,255,255,0.2);flex-shrink:0}
