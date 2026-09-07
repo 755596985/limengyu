@@ -526,7 +526,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .ncs{padding:16px;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:1px solid transparent;border-radius:var(--rs);box-shadow:0 1px 8px rgba(0,0,0,0.04);margin-bottom:12px}
 .hero{text-align:center;padding:30px 0 20px}
 .avd{display:flex;justify-content:center;align-items:center;gap:12px;margin-bottom:16px}
-.avd .av{width:70px;height:70px;border-radius:50%;box-shadow:0 2px 12px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:2em;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:2px solid transparent;overflow:hidden;transition:transform .2s}
+.avd .av{width:70px;height:70px;border-radius:50%;box-shadow:0 2px 12px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:2em;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ffc7d8,#ff8eae) border-box;border:2px solid transparent;overflow:hidden;transition:transform .2s}
 .avd .av:hover{transform:scale(1.08)}
 .avd .hi{font-size:1.8em;animation:pulse 1.5s ease infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
