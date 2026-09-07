@@ -163,7 +163,7 @@ function insertPostImageUrl() {
 </div>
 <div class="card"><div class="card-title"><?php echo m_ico_badge('list'); ?>说说列表 (<?php echo count($posts);?>)</div>
 <style>
-.post-card-item{display:block;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
+.post-card-item{display:block;background:var(--card);border:1px solid #8b5cf6;border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
 .post-card-item:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-1px)}
 .post-headrow{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .post-avatar{width:46px;height:46px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--pri),var(--prisoft));box-shadow:0 2px 8px rgba(0,0,0,.08);border:2px solid var(--card)}
