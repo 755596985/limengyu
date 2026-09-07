@@ -953,6 +953,106 @@ TXT;
     return ['ok' => true, 'id' => $id, 'title' => $title, 'content' => $content];
 }
 
+/**
+ * AI 随机回忆：从长期记忆 + 近期说说里随机挑选片段，让 AI 写一段 80-200 字的"回忆"，
+ * 以说说形式落库（location=AI回忆），供前台"回忆"氛围使用。
+ */
+function cron_ai_recall_run(): array {
+    $c = get_config();
+    $n1 = $c['name1'] ?? '男神';
+    $n2 = $c['name2'] ?? '女神';
+
+    // 素材：长期记忆（最多 40 条，需开启记忆） + 近期说说（最多 40 条）
+    $items = [];
+    try {
+        $cfgMem = ai_ai_config();
+        if (!empty($cfgMem['memory_on'])) {
+            $mems = $cfgMem['memory'] ?? [];
+            foreach (array_slice(array_reverse($mems), 0, 40) as $mm) {
+                $txt = trim((string)($mm['c'] ?? ''));
+                if ($txt !== '') { $items[] = '记忆：' . mb_substr($txt, 0, 120); }
+            }
+        }
+    } catch (Throwable $e) {}
+    try {
+        $st = db()->prepare("SELECT title,content,author,created_at FROM cp_posts WHERE (location IS NULL OR location='' OR location='首页') ORDER BY created_at DESC LIMIT 40");
+        $st->execute();
+        foreach ($st->fetchAll() as $row) {
+            $who = ($row['author'] === '1') ? $n1 : $n2;
+            $txt = trim((string)$row['title']) !== '' ? '[' . trim((string)$row['title']) . '] ' . trim((string)$row['content']) : trim((string)$row['content']);
+            if ($txt !== '') { $items[] = $who . ' ' . substr((string)$row['created_at'], 0, 10) . '：' . mb_substr($txt, 0, 160); }
+        }
+    } catch (Throwable $e) {}
+    if (empty($items)) {
+        return ['ok' => false, 'reason' => '还没有可用于回忆的内容'];
+    }
+    // 随机取 8-15 条作为线索，鼓励挑最打动人的片段
+    shuffle($items);
+    $seed = implode("\n", array_slice($items, 0, 12));
+
+    $persona = ai_build_persona_block();
+    $system = <<<TXT
+你是「{$n1} & {$n2} 情侣小窝」的 AI 伴侣。用户点击"随机回忆"，希望从两人生活中的真实痕迹里挑一段最值得纪念的小事，写成一则温暖动人的"回忆说说"，发布在主页。
+
+【当前人设】
+{$persona}
+
+【可选素材（随机片段，挑 1-3 条最有画面的展开）】
+{$seed}
+
+任务要求：
+1. 只写 100-220 字；像一个温柔的人在翻旧相册时突然想起那天，语气自然真诚，有细节有温度，不要空泛鸡汤；
+2. 时间锚点可以模糊化（如"那天""记得有一次"），不必拘泥素材里的日期；
+3. 必须带标题，10 字以内；必须带标签 2 个，中文逗号分隔；
+4. 输出严格三行：
+标题：<标题>
+标签：<标签1,标签2>
+正文：<100-220字回忆正文>
+TXT;
+    $messages = [
+        ['role' => 'system', 'content' => $system],
+        ['role' => 'user', 'content' => '帮我们随机回忆一段最温暖的片段吧。'],
+    ];
+    $j = ai_chat_completion($messages, [], 120);
+    $raw = trim((string)($j['choices'][0]['message']['content'] ?? ''));
+    if ($raw === '' || !empty($j['error'])) {
+        return ['ok' => false, 'error' => (string)($j['error'] ?? 'AI 返回内容为空')];
+    }
+    $title = '';
+    if (preg_match('/^#{0,6}\s*标题[:：]\s*(.+)$/mu', $raw, $m)) { $title = trim($m[1]); }
+    $tags = [];
+    if (preg_match('/^#{0,6}\s*标签[:：]\s*(.+)$/mu', $raw, $m)) {
+        foreach (preg_split('/[,，、;；]/u', $m[1]) as $t) { $t = trim($t); if ($t !== '') { $tags[] = $t; } }
+    }
+    $content = '';
+    if (preg_match('/^#{0,6}\s*正文[:：]\s*([\s\S]+)$/mu', $raw, $m)) { $content = trim($m[1]); }
+    if ($content === '') { $content = trim(preg_replace('/^\s*#{0,6}\s*(标题|标签|正文)[:：].*$/mu', '', $raw)); }
+    $title = mb_substr(trim($title, "# \n\r\t"), 0, 20) !== '' ? mb_substr(trim($title, "# \n\r\t"), 0, 20) : '偷偷想起那天';
+    $tags = array_slice($tags, 0, 3);
+    if (empty($tags)) { $tags = ['回忆']; }
+    $content = mb_substr($content, 0, 800);
+
+    $id = new_id();
+    post_insert([
+        'id' => $id,
+        'title' => $title,
+        'tags' => $tags,
+        'content' => $content,
+        'author' => '1',
+        'mood' => '🌙',
+        'time' => date('Y-m-d H:i:s'),
+        'images' => [],
+        'video' => '',
+        'music' => '',
+        'ip' => '127.0.0.1',
+        'location' => 'AI回忆',
+        'user_id' => null,
+        'user_nick' => null,
+        'user_color' => null,
+    ]);
+    return ['ok' => true, 'id' => $id, 'title' => $title, 'content' => $content];
+}
+
 if (($MOD_RUN ?? '') === 'handle') {
     if ($act === 'ai_save') {
         $cfg = ai_ai_config();
@@ -1015,6 +1115,14 @@ if (($MOD_RUN ?? '') === 'handle') {
         // 手动触发一次 AI 周摘要（跳过 7 天防重复）
         header('Content-Type: application/json; charset=utf-8');
         $raw = cron_ai_weekly_run(true);
+        echo json_encode($raw, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($act === 'ai_recall_trigger') {
+        // 手动触发一次 AI 随机回忆（每条都是独立新篇，直接生成）
+        header('Content-Type: application/json; charset=utf-8');
+        $raw = cron_ai_recall_run();
         echo json_encode($raw, JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -1276,6 +1384,19 @@ if (($MOD_RUN ?? '') === 'render') {
 </div>
 
 <div class="card">
+<div class="card-title"><?php echo m_ico_badge('star'); ?>AI 随机回忆</div>
+<div style="font-size:.88em;color:var(--tl);margin-bottom:10px">随时点击"随机回忆"，AI 会从长期记忆与近期说说中挑一段最打动人的真实片段，写成 100-200 字的温柔"回忆说说"发布在主页（每次点击都会新生成一篇，不重复）。</div>
+<div style="margin-bottom:10px">
+<form method="post" style="display:inline" onsubmit="return aiRecallSubmit(this);">
+<?php echo csrf_field(); ?>
+<input type="hidden" name="act" value="ai_recall_trigger">
+<button type="submit" class="btn" style="padding:8px 14px;width:auto">🎲 随机回忆一篇</button>
+</form>
+<span id="ai_recall_result" style="font-size:.85em;color:var(--tl);margin-left:10px"></span>
+</div>
+</div>
+
+<div class="card">
 <div class="card-title"><?php echo m_ico_badge('comment'); ?>对话</div>
 <div id="ai_chat_box" style="max-height:480px;overflow-y:auto;padding:10px 4px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px"></div>
 <div style="display:flex;gap:8px;align-items:flex-end">
@@ -1324,6 +1445,28 @@ function aiEscape(s){
     var d = document.createElement('div');
     d.textContent = String(s == null ? '' : s);
     return d.innerHTML.replace(/\n/g, '<br>');
+}
+function aiRecallSubmit(form){
+    var btn = form.querySelector('button');
+    var out = document.getElementById('ai_recall_result');
+    btn.disabled = true;
+    btn.textContent = '回忆生成中…';
+    out.textContent = '';
+    var fd = new FormData(form);
+    fetch(form.action || location.href, {method:'POST', body: fd, headers:{'X-Requested-With':'fetch'}})
+        .then(function(r){ return r.json().catch(function(){ throw new Error('返回格式异常'); }); })
+        .then(function(j){
+            if (j && j.ok) {
+                out.style.color = '#2e7d32';
+                out.textContent = '已发布《' + (j.title || '回忆') + '》到主页说说';
+            } else {
+                out.style.color = '#b34a40';
+                out.textContent = '生成失败：' + ((j && (j.error || j.reason)) || '未知原因');
+            }
+        })
+        .catch(function(e){ out.style.color = '#b34a40'; out.textContent = '请求失败：' + e.message; })
+        .finally(function(){ btn.disabled = false; btn.textContent = '🎲 随机回忆一篇'; });
+    return false;
 }
 function aiAddMsg(role, text, save){
     var box = document.getElementById('ai_chat_box');
