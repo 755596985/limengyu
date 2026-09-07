@@ -8,7 +8,7 @@
  *   3. 新增模块：新建 modules/xxx.php（参照现有模块双模式结构）后在数组中注册
  */
 return [
-    ['key' => 'ai', 'file' => 'ai.php', 'label' => 'AI', 'icon' => 'ai', 'acts' => ["ai_save", "ai_chat", "ai_clear_memory"], 'enabled' => true],
+    ['key' => 'ai', 'file' => 'ai.php', 'label' => 'AI', 'icon' => 'ai', 'acts' => ["ai_save", "ai_chat", "ai_clear_memory", "ai_cron_reset_key", "ai_cron_trigger", "ai_weekly_toggle", "ai_weekly_trigger", "ai_recall_trigger"], 'enabled' => true],
     ['key' => 'posts', 'file' => 'posts.php', 'label' => '说说', 'icon' => 'post', 'acts' => ["save_post", "delete_post"], 'enabled' => true],
     ['key' => 'album', 'file' => 'album.php', 'label' => '相册', 'icon' => 'album', 'acts' => ["save_photo", "delete_photo"], 'enabled' => true],
     ['key' => 'places', 'file' => 'places.php', 'label' => '足迹', 'icon' => 'place', 'acts' => ["save_place", "delete_place"], 'enabled' => true],
