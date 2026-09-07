@@ -528,8 +528,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .avd{display:flex;justify-content:center;align-items:center;gap:12px;margin-bottom:16px}
 .avd .av{width:70px;height:70px;border-radius:50%;box-shadow:0 2px 12px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:2em;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ffc7d8,#ff8eae) border-box;border:2px solid transparent;overflow:hidden;transition:transform .2s}
 .avd .av:hover{transform:scale(1.08)}
-.avd .hi{font-size:1.8em;animation:pulse 1.5s ease infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.avd .hi{display:flex;align-items:center;justify-content:center;animation:heartbeat 1.6s ease-in-out infinite;filter:drop-shadow(0 2px 6px rgba(255,94,138,.35))}
+.avd .hi svg{display:block}
+@keyframes heartbeat{0%,42%,100%{transform:scale(1)}8%{transform:scale(1.18)}16%{transform:scale(.97)}24%{transform:scale(1.1)}32%{transform:scale(1)}}
 .hero h1{font-size:1.5em;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,var(--pri),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
 .hero .sub{font-size:.85em;color:var(--tl);letter-spacing:1px}
 .tc{text-align:center;position:relative;overflow:hidden}
@@ -761,7 +762,7 @@ svg.ico{vertical-align:-.12em;display:inline-block;flex:none}
 .reward-btn{display:inline-flex;align-items:center;gap:7px}
 .btn,.btn2{display:inline-flex;align-items:center;gap:6px}
 .post-card .pmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.hero .hi{line-height:1;color:#e07a5f}
+.hero .hi{line-height:1;color:#ff5e8a}
 .pm{display:flex;align-items:center;gap:4px}
 .empty .ei{display:inline-flex;color:var(--tl);opacity:.55;line-height:1}
 .ncs.empty{display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -785,7 +786,7 @@ svg.ico{vertical-align:-.12em;display:inline-block;flex:none}
 <div class="hero">
 <div class="avd">
 <div class="av"><?php echo AV($a1, '👦'); ?></div>
-<div class="hi"><span class="lbl-ico"><?php echo m_ico("heart", 15); ?></span></div>
+<div class="hi"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><defs><linearGradient id="avdHg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd9e4"/><stop offset="1" stop-color="#ff5e8a"/></linearGradient></defs><path fill="url(#avdHg)" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/><ellipse cx="8.3" cy="7.2" rx="2.2" ry="1.4" fill="#fff" opacity=".4" transform="rotate(-30 8.3 7.2)"/></svg></div>
 <div class="av"><?php echo AV($a2, '👧'); ?></div>
 </div>
 <h1><?php echo htmlspecialchars($st); ?></h1>
