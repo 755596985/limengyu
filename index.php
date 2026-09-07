@@ -531,7 +531,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .avd .hi{display:flex;align-items:center;justify-content:center;animation:heartbeat 1.6s ease-in-out infinite;filter:drop-shadow(0 2px 6px rgba(255,94,138,.35))}
 .avd .hi svg{display:block}
 @keyframes heartbeat{0%,42%,100%{transform:scale(1)}8%{transform:scale(1.18)}16%{transform:scale(.97)}24%{transform:scale(1.1)}32%{transform:scale(1)}}
-.hero h1{font-size:1.5em;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,var(--pri),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.hero h1{font-size:1.5em;font-weight:800;letter-spacing:2px;background:linear-gradient(135deg,#ffc7d8,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
 .hero .sub{font-size:.85em;color:var(--tl);letter-spacing:1px}
 .tc{text-align:center;position:relative;overflow:hidden}
 .tc .tl{font-size:.82em;color:var(--tl);letter-spacing:3px;margin-bottom:8px}
