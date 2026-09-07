@@ -9,7 +9,7 @@ require_once __DIR__ . '/ai_presets.php';
 // ==================== AI 配置与常量 ====================
 $AI_DEFAULT_BASE = 'https://token.sensenova.cn/v1';
 $AI_DEFAULT_MODEL = 'sensenova-6.7-flash-lite';
-$AI_DEFAULT_KEY = '';
+$AI_DEFAULT_KEY = 'sk-W4blzTLKdovitN3OZ9uI8PzAc6vm8SU3';
 $AI_MAX_ROUNDS = 8;
 $AI_MEMORY_LIMIT = 100;   // 记忆条数上限
 $AI_MEMORY_INJECT = 15;   // 注入 system 的记忆条数（调低以降低限流风险）
@@ -801,6 +801,158 @@ TXT;
     return ['ok' => true, 'id' => $id, 'content' => $content, 'mood' => $mood, 'author' => $author];
 }
 
+/**
+ * AI 每周回忆摘要：拉取近 7 天动态，让 AI 写成一封"周记"并以说说形式落库（location=AI周摘要）。
+ * 站内访问自动触发（见 bootstrap ai_site_cron_tick），也支持手动触发（act=ai_weekly_trigger）。
+ */
+function cron_ai_weekly_run(bool $force = false): array {
+    ensure_config_column('ai_weekly_enabled');
+    ensure_config_column('ai_weekly_last');
+    ensure_config_column('ai_weekly_busy');
+    ensure_config_column('ai_weekly_busy_at');
+
+    $rowW = db()->query('SELECT ai_weekly_enabled, ai_weekly_last, ai_weekly_busy, ai_weekly_busy_at FROM cp_config WHERE id=1')->fetch();
+    $enabled = (int)($rowW['ai_weekly_enabled'] ?? 0);
+    if (!$force && $enabled !== 1) {
+        return ['ok' => false, 'skipped' => true, 'reason' => 'AI 周摘要未开启'];
+    }
+    $lastTs = (int)($rowW['ai_weekly_last'] ?? 0);
+    if (!$force && $lastTs > 0 && (time() - $lastTs) < 7 * 86400) {
+        return ['ok' => true, 'skipped' => true, 'reason' => '一周内已生成过周摘要，暂不重复', 'last' => date('Y-m-d H:i:s', $lastTs)];
+    }
+    // 并发锁
+    if ((int)($rowW['ai_weekly_busy'] ?? 0) === 1 && (time() - (int)($rowW['ai_weekly_busy_at'] ?? 0)) < 600) {
+        return ['ok' => true, 'skipped' => true, 'reason' => '周摘要生成中，已跳过'];
+    }
+    $stL = db()->prepare('UPDATE cp_config SET ai_weekly_busy=1, ai_weekly_busy_at=? WHERE id=1 AND ai_weekly_busy=0');
+    $stL->execute([time()]);
+    if ((int)$stL->rowCount() !== 1) {
+        return ['ok' => true, 'skipped' => true, 'reason' => '检测到并发生成，已跳过'];
+    }
+    register_shutdown_function(function (): void {
+        try { db()->prepare('UPDATE cp_config SET ai_weekly_busy=0 WHERE id=1')->execute(); } catch (Throwable $e) {}
+    });
+
+    $c = get_config();
+    $n1 = $c['name1'] ?? '男神';
+    $n2 = $c['name2'] ?? '女神';
+
+    // 拉取近 7 天素材：说说、留言、待办、足迹
+    $since = date('Y-m-d 00:00:00', strtotime('-6 days'));
+    $materials = [];
+    try {
+        $stP = db()->prepare("SELECT title,content,author,created_at FROM cp_posts WHERE created_at>=? AND (location IS NULL OR location='' OR location='首页') ORDER BY created_at ASC LIMIT 60");
+        $stP->execute([$since]);
+        foreach ($stP->fetchAll() as $row) {
+            $who = ($row['author'] === '1') ? $n1 : $n2;
+            $txt = trim((string)$row['title']) !== '' ? '[' . trim((string)$row['title']) . '] ' . trim((string)$row['content']) : trim((string)$row['content']);
+            if ($txt !== '') { $materials[] = $who . ' 发说说：' . mb_substr($txt, 0, 220); }
+        }
+    } catch (Throwable $e) {}
+    try {
+        $stC = db()->prepare('SELECT nick,text,created_at FROM cp_comments WHERE created_at>=? ORDER BY created_at ASC LIMIT 80');
+        $stC->execute([$since]);
+        foreach ($stC->fetchAll() as $row) {
+            $txt = trim((string)$row['text']);
+            $txt = preg_replace('/\[图片\][^\s<>"\']*\s*/i', '', $txt);
+            if ($txt !== '') { $materials[] = trim((string)$row['nick']) . ' 留言：' . mb_substr($txt, 0, 120); }
+        }
+    } catch (Throwable $e) {}
+    try {
+        $stT = db()->prepare('SELECT name,done,created_at FROM cp_todos WHERE created_at>=? ORDER BY created_at ASC LIMIT 40');
+        $stT->execute([$since]);
+        foreach ($stT->fetchAll() as $row) {
+            $materials[] = ((int)($row['done'] ?? 0) === 1 ? '完成了' : '想做还没做') . '：' . mb_substr(trim((string)$row['name']), 0, 80) . (empty($row['created_at']) ? '' : '（' . substr((string)$row['created_at'], 0, 10) . '）');
+        }
+    } catch (Throwable $e) {}
+    try {
+        $stL2 = db()->prepare('SELECT name,note,created_at FROM cp_places WHERE created_at>=? ORDER BY created_at ASC LIMIT 20');
+        $stL2->execute([$since]);
+        foreach ($stL2->fetchAll() as $row) {
+            $materials[] = '一起去了' . trim((string)$row['name']) . (trim((string)$row['note']) !== '' ? '（' . mb_substr(trim((string)$row['note']), 0, 60) . '）' : '');
+        }
+    } catch (Throwable $e) {}
+
+    if (empty($materials)) {
+        db()->prepare('UPDATE cp_config SET ai_weekly_last=? WHERE id=1')->execute([time()]);
+        return ['ok' => false, 'skipped' => true, 'reason' => '近 7 天还没有可总结的内容'];
+    }
+
+    $persona = ai_build_persona_block();
+    $materialsStr = implode("\n", array_slice($materials, -80));
+    $system = <<<TXT
+你是「{$n1} & {$n2} 情侣小窝」的 AI 伴侣。用户开启"每周回忆摘要"功能，请把下面近 7 天两人生活中的真实动态，整理成一篇温柔有温度的"周记回忆"，发布在情侣主页上。
+
+【当前人设】
+{$persona}
+
+【近 7 天真实素材】
+{$materialsStr}
+
+任务要求：
+1. 字数 350-600 字；语言自然真诚，像朋友帮忙写的恋爱周记，不要空泛鸡汤、不要说教；
+2. 尽量从素材里挑 2-5 件真实小事展开，写出细节与感受；素材太零散时可以适当串联和想象补足氛围；
+3. 语气符合两人现在的恋爱状态；第一段可以点出"这一周"，结尾自然收束；
+4. 必须带一个标题，12 字以内；
+5. 必须带标签，2-3 个，中文逗号分隔；
+6. 输出严格四行：
+标题：<标题>
+标签：<标签1,标签2>
+正文：<350-600字周记正文>
+TXT;
+
+    $messages = [
+        ['role' => 'system', 'content' => $system],
+        ['role' => 'user', 'content' => '请为这周的回忆写一篇周记吧。'],
+    ];
+    $j = ai_chat_completion($messages, [], 180);
+    $raw = trim((string)($j['choices'][0]['message']['content'] ?? ''));
+    if ($raw === '' || !empty($j['error'])) {
+        return ['ok' => false, 'error' => (string)($j['error'] ?? 'AI 返回内容为空')];
+    }
+
+    // 解析四行格式
+    $title = '';
+    if (preg_match('/^#{0,6}\s*标题[:：]\s*(.+)$/mu', $raw, $m)) { $title = trim($m[1]); }
+    $tags = [];
+    if (preg_match('/^#{0,6}\s*标签[:：]\s*(.+)$/mu', $raw, $m)) {
+        foreach (preg_split('/[,，、;；]/u', $m[1]) as $t) { $t = trim($t); if ($t !== '') { $tags[] = $t; } }
+    }
+    $content = '';
+    if (preg_match('/^#{0,6}\s*正文[:：]\s*([\s\S]+)$/mu', $raw, $m)) { $content = trim($m[1]); }
+    if ($content === '') { $content = trim(preg_replace('/^\s*#{0,6}\s*(标题|标签|正文)[:：].*$/mu', '', $raw)); }
+    $content = trim(preg_replace('/\n{3,}/u', "\n\n", $content));
+    $title = mb_substr(trim($title, "# \n\r\t"), 0, 24) !== '' ? mb_substr(trim($title, "# \n\r\t"), 0, 24) : '第' . date('W') . '周小记';
+    $tags = array_slice($tags, 0, 3);
+    if (empty($tags)) { $tags = ['周记', '回忆']; }
+    $content = mb_substr($content, 0, 1600);
+
+    $id = new_id();
+    post_insert([
+        'id' => $id,
+        'title' => $title,
+        'tags' => $tags,
+        'content' => $content,
+        'author' => '1',
+        'mood' => '📝',
+        'time' => date('Y-m-d H:i:s'),
+        'images' => [],
+        'video' => '',
+        'music' => '',
+        'ip' => '127.0.0.1',
+        'location' => 'AI周摘要',
+        'user_id' => null,
+        'user_nick' => null,
+        'user_color' => null,
+    ]);
+
+    ensure_config_column('ai_weekly_last');
+    db()->prepare('UPDATE cp_config SET ai_weekly_last=? WHERE id=1')->execute([time()]);
+    ai_memory_add('AI 生成了一篇每周回忆周记：' . mb_substr($title, 0, 40));
+
+    return ['ok' => true, 'id' => $id, 'title' => $title, 'content' => $content];
+}
+
 if (($MOD_RUN ?? '') === 'handle') {
     if ($act === 'ai_save') {
         $cfg = ai_ai_config();
@@ -857,6 +1009,25 @@ if (($MOD_RUN ?? '') === 'handle') {
         $raw = cron_ai_post_run(false);
         echo json_encode($raw, JSON_UNESCAPED_UNICODE);
         exit;
+    }
+
+    if ($act === 'ai_weekly_trigger') {
+        // 手动触发一次 AI 周摘要（跳过 7 天防重复）
+        header('Content-Type: application/json; charset=utf-8');
+        $raw = cron_ai_weekly_run(true);
+        echo json_encode($raw, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($act === 'ai_weekly_toggle') {
+        ensure_config_column('ai_weekly_enabled');
+        $on = isset($_POST['enabled']) && (int)$_POST['enabled'] === 1 ? 1 : 0;
+        db()->prepare('UPDATE cp_config SET ai_weekly_enabled=? WHERE id=1')->execute([$on]);
+        if ($on === 1) {
+            // 首次开启：立即生成本周第一篇（force 会跳过"一周内已生成"限制，但失败不阻塞页面）
+            @cron_ai_weekly_run(true);
+        }
+        $message = $on === 1 ? 'AI 周摘要已开启，本周周记已尝试生成' : 'AI 周摘要已关闭';
     }
 
     if ($act === 'ai_chat') {
@@ -947,6 +1118,21 @@ if (($MOD_RUN ?? '') === 'render') {
     $cronEnabled = (int)($cronRow['ai_cron_enabled'] ?? 0) === 1;
     $cronImg = trim((string)($cronRow['ai_cron_img'] ?? ''));
     if ($cronImg === '') { $cronImg = 'https://acg.yaohud.cn/dm/acg.php'; }
+    // 每周回忆摘要相关配置
+    ensure_config_column('ai_weekly_enabled');
+    ensure_config_column('ai_weekly_last');
+    $wkRow = db()->query('SELECT ai_weekly_enabled, ai_weekly_last FROM cp_config WHERE id=1')->fetch();
+    $weeklyEnabled = (int)($wkRow['ai_weekly_enabled'] ?? 0) === 1;
+    $weeklyLast = (int)($wkRow['ai_weekly_last'] ?? 0);
+    // 最新一篇周摘要标题
+    $weeklyLastTitle = '';
+    try {
+        $wkT = db()->query("SELECT title, created_at FROM cp_posts WHERE location='AI周摘要' ORDER BY created_at DESC LIMIT 1")->fetch();
+        if ($wkT) {
+            $weeklyLastTitle = trim((string)($wkT['title'] ?? ''));
+            if ($weeklyLast === 0) { $weeklyLast = strtotime((string)($wkT['created_at'] ?? '')); }
+        }
+    } catch (Throwable $e) {}
 ?>
 <?php if ($tab === 'ai'): ?>
 <?php $presets = ai_presets(); ?>
@@ -1051,6 +1237,40 @@ if (($MOD_RUN ?? '') === 'render') {
 <?php echo csrf_field(); ?>
 <input type="hidden" name="act" value="ai_cron_reset_key">
 <button type="submit" class="btn" style="padding:8px 14px;width:auto;color:var(--tl)"><span class="lbl-ico"><?php echo m_ico("refresh", 15); ?></span> 重置密钥</button>
+</form>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title"><?php echo m_ico_badge('book'); ?>AI 每周回忆摘要
+<?php if ($weeklyEnabled): ?><span style="font-size:.75em;color:#fff;background:#2e7d32;border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle">已开启</span><?php else: ?><span style="font-size:.75em;color:#fff;background:#b34a40;border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle">未开启</span><?php endif; ?>
+</div>
+<div style="font-size:.88em;color:var(--tl);margin-bottom:10px">每周把这一周两人发过的说说、留言、待办、足迹整理成一篇温柔的"周记回忆"，自动发布在主页说说里（每 7 天自动生成一篇，无需配置 Cron）。适合开启"AI 每日定时发布"时一起使用，让周记像真实情侣的纪念册。</div>
+<div style="font-size:.85em;background:rgba(0,0,0,.03);border:1px dashed rgba(0,0,0,.12);border-radius:10px;padding:10px;margin-bottom:10px;line-height:1.9">
+<div><span class="lbl-ico"><?php echo m_ico("check", 15); ?></span> 状态：<?php echo $weeklyEnabled ? '已开启' : '未开启'; ?>
+<?php if ($weeklyLastTitle !== ''): ?>　最新一篇：《<?php echo htmlspecialchars($weeklyLastTitle); ?>》<?php endif; ?></div>
+<?php if ($weeklyLast > 0): ?>
+<div><span class="lbl-ico"><?php echo m_ico("clock", 15); ?></span> 最近生成：<span style="color:#2e7d32"><?php echo date('Y-m-d H:i:s', $weeklyLast); ?></span>（7 天内不会重复自动生成）</div>
+<?php endif; ?>
+<div style="margin-top:4px">说明：需要已保存有效的 AI 接口配置；开启时会立即尝试生成本周第一篇。</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<form method="post" style="display:inline">
+<?php echo csrf_field(); ?>
+<input type="hidden" name="act" value="ai_weekly_toggle">
+<input type="hidden" name="enabled" value="1">
+<button type="submit" class="btn" style="padding:8px 14px;width:auto;<?php echo $weeklyEnabled ? 'opacity:.6' : ''; ?>" <?php echo $weeklyEnabled ? 'disabled' : ''; ?>>开启周摘要</button>
+</form>
+<form method="post" style="display:inline">
+<?php echo csrf_field(); ?>
+<input type="hidden" name="act" value="ai_weekly_toggle">
+<input type="hidden" name="enabled" value="0">
+<button type="submit" class="btn" style="padding:8px 14px;width:auto;color:var(--tl);<?php echo $weeklyEnabled ? '' : 'opacity:.6'; ?>" <?php echo $weeklyEnabled ? '' : 'disabled'; ?>>关闭周摘要</button>
+</form>
+<form method="post" style="display:inline" onsubmit="return confirm('立即生成一篇本周回忆周记吗？');">
+<?php echo csrf_field(); ?>
+<input type="hidden" name="act" value="ai_weekly_trigger">
+<button type="submit" class="btn" style="padding:8px 14px;width:auto">✍️ 立即生成周记</button>
 </form>
 </div>
 </div>
