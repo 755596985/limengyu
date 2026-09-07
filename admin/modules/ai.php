@@ -841,7 +841,7 @@ function cron_ai_weekly_run(bool $force = false): array {
     $since = date('Y-m-d 00:00:00', strtotime('-6 days'));
     $materials = [];
     try {
-        $stP = db()->prepare("SELECT title,content,author,created_at FROM cp_posts WHERE created_at>=? AND (location IS NULL OR location='' OR location='首页') ORDER BY created_at ASC LIMIT 60");
+        $stP = db()->prepare("SELECT title,content,author,created_at FROM cp_posts WHERE created_at>=? AND (location IS NULL OR location NOT IN ('AI周摘要','AI回忆')) ORDER BY created_at ASC LIMIT 60");
         $stP->execute([$since]);
         foreach ($stP->fetchAll() as $row) {
             $who = ($row['author'] === '1') ? $n1 : $n2;
@@ -975,7 +975,7 @@ function cron_ai_recall_run(): array {
         }
     } catch (Throwable $e) {}
     try {
-        $st = db()->prepare("SELECT title,content,author,created_at FROM cp_posts WHERE (location IS NULL OR location='' OR location='首页') ORDER BY created_at DESC LIMIT 40");
+        $st = db()->prepare("SELECT title,content,author,created_at FROM cp_posts WHERE (location IS NULL OR location NOT IN ('AI周摘要','AI回忆')) ORDER BY created_at DESC LIMIT 40");
         $st->execute();
         foreach ($st->fetchAll() as $row) {
             $who = ($row['author'] === '1') ? $n1 : $n2;
