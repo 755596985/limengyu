@@ -350,6 +350,19 @@ function ensure_config_column(string $col): void {
     $checked[$col] = true;
 }
 
+// 确保任意表存在指定列（兼容旧库，缺失时自动 ALTER 添加；列定义必须为完整 SQL 片段）
+function ensure_table_column(string $table, string $col, string $ddl): void {
+    static $checked = [];
+    $key = $table . '.' . $col;
+    if (isset($checked[$key])) return;
+    $pdo = db();
+    $cols = $pdo->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array($col, $cols, true)) {
+        $pdo->exec('ALTER TABLE `' . $table . '` ADD COLUMN ' . $ddl);
+    }
+    $checked[$key] = true;
+}
+
 function save_config(array $c): void {
     ensure_config_column('footer');
     ensure_config_column('reward_wx_img');
@@ -704,8 +717,8 @@ function places_all(): array {
     return $rows;
 }
 function place_insert(array $p): void {
-    db()->prepare('INSERT INTO cp_places (id,name,note,image,created_at) VALUES (?,?,?,?,?)')
-        ->execute([$p['id'], $p['name'], $p['note'] ?? '', $p['image'] ?? '', $p['time'] ?? date('Y-m-d H:i:s')]);
+    db()->prepare('INSERT INTO cp_places (id,name,note,image,lat,lng,created_at) VALUES (?,?,?,?,?,?,?)')
+        ->execute([$p['id'], $p['name'], $p['note'] ?? '', $p['image'] ?? '', $p['lat'] ?? null, $p['lng'] ?? null, $p['time'] ?? date('Y-m-d H:i:s')]);
 }
 function place_delete_by_index(int $idx, string $root): bool {
     $all = places_all();
@@ -951,14 +964,22 @@ function ai_site_cron_tick(): void {
         // 仅前台页面触发（管理后台不触发，避免后台操作产生额外发布）
         if (stripos($_SERVER['SCRIPT_FILENAME'] ?? '', '/admin/') !== false) { return; }
         $cfg = get_config();
-        if ((int)($cfg['ai_cron_enabled'] ?? 0) !== 1) { return; }
-        $last = (int)($cfg['ai_cron_last'] ?? 0);
-        $now = time();
-        if ($now - $last < 72000) { return; }   // 20 小时防重复
-        if ((int)date('G', $now) < 9) { return; } // 每天 09:00 后才允许发布
         require_once __DIR__ . '/../admin/modules/ai.php';
-        if (function_exists('cron_ai_post_run')) {
-            cron_ai_post_run(true);
+        $now = time();
+
+        // 1) AI 每日定时发布（需开启）：距上次超过 20 小时且当天 09:00 后，首次访问自动补发
+        if ((int)($cfg['ai_cron_enabled'] ?? 0) === 1) {
+            $last = (int)($cfg['ai_cron_last'] ?? 0);
+            if ($now - $last >= 72000 && (int)date('G', $now) >= 9 && function_exists('cron_ai_post_run')) {
+                cron_ai_post_run(true);
+            }
+        }
+
+        // 2) AI 每周回忆摘要（需开启）：每周一 09:00 后首次访问触发，周内不重复
+        if ((int)($cfg['ai_weekly_enabled'] ?? 0) === 1) {
+            if ((int)date('N', $now) === 1 && (int)date('G', $now) >= 9 && function_exists('cron_ai_weekly_run')) {
+                cron_ai_weekly_run(false);
+            }
         }
     } catch (Throwable $e) {
         // 静默失败，绝不影响页面正常访问
@@ -1011,6 +1032,7 @@ function m_ico(string $name, int $size = 20): string {
             'clock'   => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
             'gift'    => '<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
             'calendar' => '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+            'map'     => '<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>',
             'tag'     => '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
             'eye'     => '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
             'search'  => '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
