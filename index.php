@@ -544,7 +544,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 @keyframes spk{0%,100%{transform:scale(1) rotate(0deg);opacity:.8}50%{transform:scale(1.2) rotate(45deg);opacity:1}}
 .tc{text-align:center;position:relative;overflow:hidden;z-index:0;padding:18px 20px 14px}
 .tc::before{content:'';position:absolute;left:0;right:0;top:0;height:70px;background:radial-gradient(circle at 50% 0%,rgba(255,199,216,.45),transparent 70%);pointer-events:none;z-index:-1}
-.tc .tl{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:999px;background:linear-gradient(135deg,#ffe3ea,#ffd0dc);border:1px solid rgba(255,94,138,.25);color:#ff5e8a;font-size:.8em;font-weight:700;letter-spacing:2px;margin-bottom:10px;box-shadow:0 2px 8px rgba(255,94,138,.12)}
+.tc .tl{display:block;text-align:center;color:#ff5e8a;font-size:1em;font-weight:700;letter-spacing:2px;margin-bottom:10px}
 .tc .tn{font-size:4em;font-weight:900;letter-spacing:4px;background:linear-gradient(180deg,#ff9eb5,#ff5e8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin:4px 0 2px;filter:drop-shadow(0 2px 10px rgba(255,94,138,.22))}
 .tc .td{font-size:.9em;color:#e0728e;font-weight:600;margin-top:4px;letter-spacing:1px}
 .tc .tdt{font-size:.76em;color:#d98ba2;margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,94,138,.25)}
