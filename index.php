@@ -514,6 +514,10 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title><?php echo htmlspecialchars($st); ?></title>
+<?php if ($pg === 'places' && ($C['show_places'] ?? 1)): ?>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<?php endif; ?>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e07a5f'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/%3E%3C/svg%3E">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -690,6 +694,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .ft{text-align:center;padding:20px 12px 8px;color:var(--tl);font-size:.7em;line-height:1.8}
 .ft a{color:var(--tl);text-decoration:none;border-bottom:1px dashed var(--line)}
 .ft a:hover{color:var(--pri);border-bottom-color:var(--pri)}
+/* 纪念日卡片 */
+.anniversary-card{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#ffc7d8,#ff8eae) border-box;border:1px solid transparent;border-radius:var(--r);box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px}
+.ac-banner{background:linear-gradient(135deg,#fff0f4,#ffe1ea);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ac-banner-t{font-size:.74em;color:#d4786e;font-weight:600}
+.ac-banner-n{font-size:.92em;font-weight:700;color:var(--tx)}
+.ac-num{text-align:center;flex-shrink:0;background:#fff;border-radius:12px;padding:8px 12px;box-shadow:0 1px 6px rgba(212,120,110,.18)}
+.ac-num-v{font-size:1.25em;font-weight:800;color:#ff5e8a;line-height:1.1}
+.ac-num-l{font-size:.64em;color:var(--tl)}
+[data-theme="dark"] .ac-banner{background:linear-gradient(135deg,rgba(236,157,148,.16),rgba(236,157,148,.08))}
+[data-theme="dark"] .ac-banner-t{color:#ff9eb5}
+[data-theme="dark"] .ac-num{background:var(--card);box-shadow:0 1px 6px rgba(0,0,0,.25)}
 @media(min-width:600px){.main-container{padding:24px 24px 110px}.ag{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:480px){.cmt-reply-form{padding-left:0}.cmt-replies-inline{padding-left:0}.cmt-expand-btn{padding-left:0}.cmt-admin-reply{margin-left:0}.cmt-expand-replies{padding-left:0}.cmt-expand-replies-hidden{padding-left:0}.cmt-edit-form{margin-left:0}}
 .bn a[href="?p=home"] .ni{color:#e85d5d}
@@ -868,6 +883,46 @@ function switchReward(k){
 <div class="tdt"><?php echo m_ico('calendar',13); ?> <?php echo date('Y/m/d', strtotime($ld)); ?> → ∞</div>
 </div>
 
+<?php
+// ===== 纪念日卡片：展示恋爱里程碑（基于 love_date 计算）=====
+$_ldStart = strtotime(date('Y-m-d', strtotime($ld)));
+$_today = strtotime(date('Y-m-d'));
+$_days = (int)(($_today - $_ldStart) / 86400);
+$_miles = [
+    ['n'=>100,   'label'=>'百日'],
+    ['n'=>365,   'label'=>'一周年'],
+    ['n'=>520,   'label'=>'520'],
+    ['n'=>666,   'label'=>'666'],
+    ['n'=>777,   'label'=>'777'],
+    ['n'=>888,   'label'=>'888'],
+    ['n'=>999,   'label'=>'999'],
+    ['n'=>1000,  'label'=>'千日'],
+    ['n'=>1314,  'label'=>'1314'],
+    ['n'=>1500,  'label'=>'1500天'],
+    ['n'=>2000,  'label'=>'2000天'],
+];
+$_done = []; $_next = null;
+foreach ($_miles as $_mk) {
+    if ($_days >= $_mk['n']) { $_done[] = $_mk; }
+    elseif ($_next === null) { $_next = $_mk; }
+}
+if ($_next === null) { $_next = ['n'=>(floor($_days/365)+1)*365, 'label'=>'纪念日']; }
+if (count($_done) > 0 && $_done[count($_done)-1]['n'] === $_days) { $_just = $_done[count($_done)-1]; }
+?>
+<div class="anniversary-card" style="padding:18px 20px">
+<div class="ac-head" style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:.95em;color:var(--tx);margin-bottom:10px"><?php echo m_ico('heart',16); ?> 纪念日</div>
+<?php if ($_next): ?>
+<?php $_nd = (int)((strtotime('+'.($_next['n'] - $_days).' day', $_ldStart) - $_today)/86400); ?>
+<div class="ac-banner"><div><div class="ac-banner-t">下一个纪念日</div><div class="ac-banner-n"><?php echo htmlspecialchars($_next['label']); ?> · 在一起第 <?php echo $_next['n']; ?> 天</div></div><div class="ac-num"><div class="ac-num-v"><?php echo max(0,$_nd); ?></div><div class="ac-num-l">天后</div></div></div>
+<?php endif; ?>
+<?php if (!empty($_done)): $r = array_slice($_done, -5); ?>
+<div style="font-size:.72em;color:var(--tl);margin-bottom:6px">已走过：</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px"><?php foreach ($r as $_d1): ?><span style="font-size:.7em;background:var(--soft);color:var(--tl);padding:4px 10px;border-radius:20px"><?php echo htmlspecialchars($_d1['label']); ?> ✓</span><?php endforeach; ?></div>
+<?php else: ?>
+<div style="font-size:.74em;color:var(--tl)">第 100 天起，每个特别的日子都会出现在这里</div>
+<?php endif; ?>
+</div>
+
 <div class="sr">
 <?php if ($C['show_comments'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($P); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('comment',15); ?></span>说说</div></div><?php endif; ?>
 <?php if ($C['show_album'] ?? 1): ?><div class="ncs ss"><div class="n"><?php echo count($PH); ?></div><div class="l"><span class="l-ico"><?php echo m_ico('album',15); ?></span>相册</div></div><?php endif; ?>
@@ -906,9 +961,30 @@ function switchReward(k){
 <?php else: ?><div class="ag"><?php foreach($PH as $ph): ?><div class="ai" onclick="l('<?php echo htmlspecialchars($ph['url'],ENT_QUOTES); ?>')"><img src="<?php echo htmlspecialchars($ph['url']); ?>" loading="lazy"><?php if(!empty($ph['title'])):?><div class="cap"><?php echo htmlspecialchars($ph['title']); ?></div><?php endif; ?></div><?php endforeach; ?></div><?php endif; endif; ?>
 
 <?php if ($pg === 'places' && ($C['show_places'] ?? 1)): ?>
+<?php $plcCount = 0; $plcJson = []; foreach ($PL as $plx) { if (!empty($plx['lat']) && !empty($plx['lng']) && is_numeric($plx['lat']) && is_numeric($plx['lng'])) { $plcCount++; $plcJson[] = ['lat'=>(float)$plx['lat'], 'lng'=>(float)$plx['lng'], 'name'=>$plx['name']??'', 'note'=>$plx['note']??'', 'img'=>$plx['image']??'']; } } ?>
 <div class="sh"><span class="si"><?php echo m_ico('place',16); ?></span><span class="st">去过的地方</span><span class="sc"><?php echo count($PL); ?>个</span></div>
+<?php if ($plcCount > 0): ?>
+<div class="ncs" style="padding:8px"><div id="footMap" style="height:280px;width:100%;border-radius:12px;z-index:0"></div>
+<script>
+(function(){
+    var spots = <?php echo json_encode($plcJson, JSON_UNESCAPED_UNICODE); ?>;
+    var el = document.getElementById('footMap');
+    if (typeof L === 'undefined' || !el) { if (el) el.innerHTML = '<div style="padding:60px 10px;text-align:center;color:#999;font-size:13px">地图组件未能加载（当前网络无法访问地图 CDN）</div>'; return; }
+    var map = L.map(el).setView([spots[0].lat, spots[0].lng], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap'}).addTo(map);
+    var fit = [];
+    spots.forEach(function(s){
+        var mk = L.marker([s.lat, s.lng]).addTo(map);
+        fit.push([s.lat, s.lng]);
+        var html = '<div style="min-width:120px;max-width:220px"><b>' + s.name.replace(/[<>&"]/g,'') + '</b>' + (s.img ? '<br><img src="' + s.img.replace(/[<>&"]/g,'') + '" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;margin-top:4px">' : '') + (s.note ? '<div style="font-size:12px;color:#555;margin-top:3px">' + s.note.replace(/[<>&"]/g,'').substr(0,60) + '</div>' : '') + '</div>';
+        mk.bindPopup(html);
+    });
+    if (fit.length > 1) map.fitBounds(fit, {padding:[24,24]});
+})();
+</script></div>
+<?php endif; ?>
 <?php if (empty($PL)): ?><div class="ncs empty"><div class="ei"><?php echo m_ico('place',40); ?></div><div class="et">还没有记录一起去过的地方</div></div>
-<?php else: foreach($PL as $pl): ?><div class="ncs plc"><?php if (!empty($pl['image'])): ?><img class="pimg" src="<?php echo htmlspecialchars($pl['image']); ?>" onclick="l('<?php echo htmlspecialchars($pl['image'],ENT_QUOTES); ?>')" loading="lazy"><?php else: ?><div class="pimg ni"><?php echo m_ico('place',26); ?></div><?php endif; ?><div class="pin"><div class="pn"><?php echo htmlspecialchars($pl['name']??'未知地点'); ?></div><div class="pd"><span class="lbl-ico"><?php echo m_ico("clock", 15); ?></span> <?php echo htmlspecialchars($pl['time']??''); ?></div><?php if (!empty($pl['note'])): ?><div class="pnote"><?php echo nl2br(htmlspecialchars($pl['note'])); ?></div><?php endif; ?></div></div><?php endforeach; endif; endif; ?>
+<?php else: foreach($PL as $pl): ?><div class="ncs plc"><?php if (!empty($pl['image'])): ?><img class="pimg" src="<?php echo htmlspecialchars($pl['image']); ?>" onclick="l('<?php echo htmlspecialchars($pl['image'],ENT_QUOTES); ?>')" loading="lazy"><?php else: ?><div class="pimg ni"><?php echo m_ico('place',26); ?></div><?php endif; ?><div class="pin"><div class="pn"><?php echo htmlspecialchars($pl['name']??'未知地点'); ?></div><div class="pd"><span class="lbl-ico"><?php echo m_ico("clock", 15); ?></span> <?php echo htmlspecialchars($pl['time']??''); ?><?php if (!empty($pl['lat']) && !empty($pl['lng'])): ?> · <span class="lbl-ico"><?php echo m_ico("map", 15); ?></span><?php echo htmlspecialchars($pl['lat']); ?>, <?php echo htmlspecialchars($pl['lng']); ?><?php endif; ?></div><?php if (!empty($pl['note'])): ?><div class="pnote"><?php echo nl2br(htmlspecialchars($pl['note'])); ?></div><?php endif; ?></div></div><?php endforeach; endif; endif; ?>
 
 <?php if ($pg === 'todos' && ($C['show_todos'] ?? 1)): ?>
 <div class="sh"><span class="si"><?php echo m_ico('todo',16); ?></span><span class="st">一起完成的事</span><span class="sc"><?php echo $DN.'/'.count($T); ?></span></div>
