@@ -67,7 +67,7 @@ $st = ($config['site_title'] ?? '') ?: '情侣小窝';
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--pri:#d4786e;--pl:#f0b4ac;--tx:#5a4e4a;--tl:#8c7e78;--bg:#f4f4f8}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.box{background:#fff;border:1px solid #8b5cf6;border-radius:24px;box-shadow:8px 8px 24px rgba(166,156,148,0.3),-8px -8px 24px rgba(255,255,255,0.8);padding:40px 32px;width:380px;max-width:90vw}
+.box{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#c9a7ff,#a06bff) border-box;border:1px solid transparent;border-radius:24px;box-shadow:8px 8px 24px rgba(166,156,148,0.3),-8px -8px 24px rgba(255,255,255,0.8);padding:40px 32px;width:380px;max-width:90vw}
 .box h2{text-align:center;font-size:1.4em;color:var(--tx);margin-bottom:6px;letter-spacing:2px}
 .box .sub{text-align:center;font-size:.85em;color:var(--tl);margin-bottom:28px}
 .fg{margin-bottom:16px}
