@@ -430,7 +430,7 @@ foreach ($MODULES as $mod) {
 unset($MOD_RUN);
 ?>
 <!-- 版权标识：© 2026 情侣小窝（开源项目，请保留此标识） -->
-<div style="text-align:center;margin-top:20px;padding-top:12px;border-top:1px dashed rgba(127,127,127,.18);font-size:.72em;color:var(--tl)">© 2026 情侣小窝 · <a href="https://github.com/755596985/limengyu" style="color:inherit;text-decoration:none">开源版</a></div>
+<div style="text-align:center;margin-top:20px;padding-top:12px;border-top:1px dashed rgba(127,127,127,.18);font-size:.72em;color:var(--tl)">© 2026 情侣小窝 v<?php echo defined('LIMENGYU_VERSION') ? LIMENGYU_VERSION : '1.1.0'; ?> · <a href="https://github.com/755596985/limengyu" style="color:inherit;text-decoration:none">开源版</a></div>
 
 </div>
 
