@@ -34,7 +34,13 @@ CREATE TABLE IF NOT EXISTS cp_config (
   ai_reply_user_id VARCHAR(32) DEFAULT NULL,
   ai_memory TEXT,
   ai_cron_key VARCHAR(64) DEFAULT NULL,
-  ai_cron_last DATETIME DEFAULT NULL
+  ai_cron_last DATETIME DEFAULT NULL,
+  loc1_lat TEXT,
+  loc1_lng TEXT,
+  loc1_addr TEXT,
+  loc2_lat TEXT,
+  loc2_lng TEXT,
+  loc2_addr TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO cp_config (id, name1, name2, love_date, site_title)
@@ -144,6 +150,8 @@ CREATE TABLE IF NOT EXISTS cp_places (
   name VARCHAR(100) NOT NULL,
   note TEXT,
   image TEXT,
+  lat DECIMAL(10,7) NULL,
+  lng DECIMAL(10,7) NULL,
   created_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
