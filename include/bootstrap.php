@@ -345,7 +345,7 @@ function ensure_config_column(string $col): void {
     $pdo = db();
     $cols = $pdo->query('SHOW COLUMNS FROM cp_config')->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array($col, $cols, true)) {
-        $pdo->exec('ALTER TABLE cp_config ADD COLUMN `' . $col . "` TEXT NOT NULL DEFAULT ''");
+        $pdo->exec('ALTER TABLE cp_config ADD COLUMN `' . $col . '` TEXT');
     }
     $checked[$col] = true;
 }
