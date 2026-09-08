@@ -24,6 +24,8 @@ if (($MOD_RUN ?? '') === 'handle') {
         $config['show_places'] = isset($_POST['show_places']) ? 1 : 0;
         $config['show_todos'] = isset($_POST['show_todos']) ? 1 : 0;
         $config['show_user_posts'] = isset($_POST['show_user_posts']) ? 1 : 0;
+        $config['show_anniv'] = isset($_POST['show_anniv']) ? 1 : 0;
+        $config['show_loc'] = isset($_POST['show_loc']) ? 1 : 0;
         $av = handle_uploads_db('avatar1', $UPLOAD_DIR); if (!empty($av)) $config['avatar1'] = $av[0];
         $av = handle_uploads_db('avatar2', $UPLOAD_DIR); if (!empty($av)) $config['avatar2'] = $av[0];
         $bg = handle_uploads_db('background_image', $UPLOAD_DIR); if(!empty($bg)) $config['background_image'] = $bg[0];
@@ -77,6 +79,8 @@ if (($MOD_RUN ?? '') === 'render') {
 <input type="file" name="background_image[]" accept="image/*"><div style="font-size:.7em;color:var(--tl)">不上传则保持原背景，勾选删除可重置为默认</div></div>
 <div class="btn-group"><button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存</button></div><hr style="margin:16px 0;border-color:var(--sd)">
 <div class="card-title" style="margin-top:8px"><span class="lbl-ico"><?php echo m_ico("config", 15); ?></span> 功能开关</div>
+<div class="fg" style="display:flex;align-items:center;gap:10px"><label style="flex:1"><span class="lbl-ico"><?php echo m_ico("heart", 15); ?></span> 首页纪念日时间表</label><label class="switch"><input type="checkbox" name="show_anniv" <?php echo ($config['show_anniv']??1)?'checked':''; ?>><span class="slider"></span></label></div>
+<div class="fg" style="display:flex;align-items:center;gap:10px"><label style="flex:1"><span class="lbl-ico"><?php echo m_ico("map", 15); ?></span> 首页位置共享</label><label class="switch"><input type="checkbox" name="show_loc" <?php echo ($config['show_loc']??1)?'checked':''; ?>><span class="slider"></span></label></div>
 <div class="fg"><label><span class="lbl-ico"><?php echo m_ico("heart", 15); ?></span> 恋爱计时标题</label><input type="text" name="love_title" class="neo" value="<?php echo htmlspecialchars($config['love_title']??'已经在一起');?>" placeholder="已经在一起"></div>
 <div class="fg" style="margin-top:14px;border-top:1px dashed var(--sd);padding-top:10px"><label style="font-weight:800"><span class="lbl-ico"><?php echo m_ico("map", 15); ?></span> 两人位置共享</label><div style="font-size:.7em;color:var(--tl)">前台首页计时卡左上角「位置」按钮可查看两人所在地。经纬度可到 <a href="https://lbs.amap.com/tools/picker" target="_blank" rel="noopener">高德坐标拾取器</a> 点选后复制填入（先纬度后经度）；位置名留空则不显示该点。</div></div>
 <div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> <?php echo htmlspecialchars($config['name1'] ?? '我'); ?> 的位置名</label><input type="text" name="loc1_addr" class="neo" value="<?php echo htmlspecialchars($config['loc1_addr']??'');?>" placeholder="如：深圳南山"></div>
