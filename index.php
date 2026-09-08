@@ -716,6 +716,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .tc .av-foot b{color:#ff5e8a;font-weight:800}
 .tc .anniv-tab{position:absolute;top:10px;right:12px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,94,138,.28);background:linear-gradient(135deg,#ffe3ea,#ffd0dc);color:#ff5e8a;font-size:.68em;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 1px 4px rgba(255,94,138,.16);z-index:2;line-height:1.4}
 .tc .anniv-tab:active{transform:scale(.96)}
+.tc .anniv-tab.lc{right:auto;left:12px}
+.tc #viewLoc{display:none;text-align:center;min-height:168px;flex-direction:column;box-sizing:border-box;justify-content:center}
+.tc.show-loc #viewTimer{display:none}
+.tc.show-loc #viewLoc{display:flex}
+.tc .loc-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#d98ba2;font-size:.8em;min-height:168px}
+.tc .loc-empty .lb{color:#ff5e8a;font-size:.92em;font-weight:800;letter-spacing:1px}
+.tc #locMapWrap{width:100%;height:178px;border-radius:12px;overflow:hidden;margin:0 0 8px;border:1px solid rgba(255,94,138,.18);box-shadow:0 2px 8px rgba(255,94,138,.1)}
+.tc #locMap{width:100%;height:100%;background:#fdf6f8}
+.tc .loc-st{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.62em;color:#d98ba2;font-weight:600;letter-spacing:.2px;padding-top:6px;border-top:1px dashed rgba(255,94,138,.2)}
+.tc .loc-st b{color:#ff5e8a;font-weight:800}
+.tc .loc-dist{display:none;text-align:center;color:#e0728e;font-size:.68em;font-weight:700;letter-spacing:.5px;margin-bottom:8px}
+.locmk .dot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;display:block;box-shadow:0 1px 5px rgba(0,0,0,.35);box-sizing:border-box}
+.locmk.pink .dot{background:#ff5e8a}
+.locmk.blue .dot{background:#5c9ce6}
+.locmk .lb{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-size:10px;line-height:1;white-space:nowrap;background:rgba(255,255,255,.94);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15)}
+.locmk.blue .lb{color:#4a7fc4;border-color:rgba(92,156,230,.2)}
 .tc #viewAnniv{display:none;text-align:left;min-height:168px;flex-direction:column;justify-content:center;box-sizing:border-box}
 .tc.show-anniv #viewTimer{display:none}
 .tc.show-anniv #viewAnniv{display:flex}
@@ -894,6 +910,7 @@ function switchReward(k){
 <?php if ($pg === 'home'): ?>
 <div class="nc tc" id="tcCard">
 <button type="button" class="anniv-tab" id="annivTab"><span id="annivTabIco">♡</span><span id="annivTabTx">纪念日</span></button>
+<button type="button" class="anniv-tab lc" id="locTab"><?php echo m_ico('place',12); ?><span id="locTabTx">位置</span></button>
 <div id="viewTimer">
 <div class="tl"><?php echo htmlspecialchars($C['love_title'] ?? '已经在一起'); ?></div>
 <div class="tn" id="dc"><?php echo $ds; ?></div>
@@ -940,19 +957,65 @@ unset($_mk);
 </div>
 <div class="av-foot"><span>已走过 <?php echo $_nxIdx === null ? count($_miles) : $_nxIdx; ?> 个纪念日</span><?php if ($_nxIdx !== null): ?><span>下一站 · <b><?php echo htmlspecialchars($_miles[$_nxIdx]['label']); ?></b> 还有 <?php echo max(0,$_miles[$_nxIdx]['left']); ?> 天</span><?php endif; ?></div>
 </div>
+<div id="viewLoc">
+<div class="loc-empty" id="locEmpty" style="display:none"><div class="lb">两人位置</div><div>后台还没有设置两人的位置</div></div>
+<div id="locMapWrap" style="display:none"><div id="locMap"></div></div>
+<div class="loc-dist" id="locDist"></div>
+<div class="loc-st" id="locSt" style="display:none"><span id="locStL"></span><span id="locStR"></span></div>
 </div>
-<script>(function(){
+</div>
+<script><?php
+$_loc_pts = [];
+if (is_numeric(($C['loc1_lat'] ?? '')) && is_numeric(($C['loc1_lng'] ?? ''))) {
+    $_loc_pts[] = ['lat'=>(float)$C['loc1_lat'], 'lng'=>(float)$C['loc1_lng'], 'name'=>(string)($C['name1'] ?? '我'), 'addr'=>(string)($C['loc1_addr'] ?? ''), 'c'=>'pink'];
+}
+if (is_numeric(($C['loc2_lat'] ?? '')) && is_numeric(($C['loc2_lng'] ?? ''))) {
+    $_loc_pts[] = ['lat'=>(float)$C['loc2_lat'], 'lng'=>(float)$C['loc2_lng'], 'name'=>(string)($C['name2'] ?? 'TA'), 'addr'=>(string)($C['loc2_addr'] ?? ''), 'c'=>'blue'];
+}
+?>(function(){
 var card=document.getElementById('tcCard'),tab=document.getElementById('annivTab'),
     ico=document.getElementById('annivTabIco'),tx=document.getElementById('annivTabTx'),
+    ltab=document.getElementById('locTab'), ltx=document.getElementById('locTabTx'),
     sc=document.getElementById('acmScroll'),now=document.getElementById('acmNow');
+var LOC=<?php echo json_encode($_loc_pts, JSON_UNESCAPED_UNICODE); ?>;
 function center(){if(now&&sc){try{sc.scrollLeft=Math.max(0,now.offsetLeft-sc.clientWidth/2+now.clientWidth/2);}catch(e){}}}
-tab.addEventListener('click',function(){
-    var a=!card.classList.contains('show-anniv');
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+function distKm(a,b){var R=6371,r=Math.PI/180,d=(b.lat-a.lat)*r,e=(b.lng-a.lng)*r,s=Math.sin(d/2)*Math.sin(d/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(e/2)*Math.sin(e/2);return Math.round(R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s)));}
+function setMode(m){
+    var a=m==='anniv',l=m==='loc';
     card.classList.toggle('show-anniv',a);
+    card.classList.toggle('show-loc',l);
     ico.textContent=a?'♥':'♡';
     tx.textContent=a?'返回计时':'纪念日';
-    if(a){setTimeout(center,40);}
-});
+    ltx.textContent=l?'返回计时':'位置';
+    if(a)setTimeout(center,40);
+    if(l)setTimeout(showLoc,80);
+}
+tab.addEventListener('click',function(){setMode(card.classList.contains('show-anniv')?'timer':'anniv');});
+ltab.addEventListener('click',function(){setMode(card.classList.contains('show-loc')?'timer':'loc');});
+function showLoc(){
+    var empty=document.getElementById('locEmpty'),wrap=document.getElementById('locMapWrap'),
+        st=document.getElementById('locSt'),dst=document.getElementById('locDist'),
+        stL=document.getElementById('locStL'),stR=document.getElementById('locStR');
+    if(!LOC.length){empty.style.display='flex';wrap.style.display='none';st.style.display='none';dst.style.display='none';return;}
+    empty.style.display='none';
+    if(!window.__locMap){
+        var map=L.map(document.getElementById('locMap')).setView([LOC[0].lat,LOC[0].lng],LOC.length>1?4:6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
+        LOC.forEach(function(p){
+            var ic=L.divIcon({className:'locmk '+p.c,html:'<span class="dot"></span><span class="lb">'+esc(p.name)+'</span>',iconSize:[14,14],iconAnchor:[7,7]});
+            L.marker([p.lat,p.lng],{icon:ic}).addTo(map).bindTooltip(esc(p.name)+(p.addr?(' · '+esc(p.addr)):''),{direction:'top',offset:[0,-10]});
+        });
+        if(LOC.length>1)map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[24,24],maxZoom:6});
+        window.__locMap=map;
+    }
+    wrap.style.display='block';st.style.display='flex';dst.style.display='none';
+    var a=LOC[0],b=LOC[1];
+    stL.textContent=a.name+(a.addr?(' · '+a.addr):'');
+    stR.textContent=b?b.name+(b.addr?(' · '+b.addr):''):'未设置位置';
+    if(b){dst.textContent='两地相距约 '+distKm(a,b)+' 公里';dst.style.display='block';}
+    setTimeout(function(){if(window.__locMap)window.__locMap.invalidateSize();},100);
+}
 })();</script>
 
 <div class="sr">
