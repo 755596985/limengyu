@@ -723,7 +723,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .tc.show-loc #viewLoc{display:flex}
 .tc .loc-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#d98ba2;font-size:.8em;min-height:168px}
 .tc .loc-empty .lb{color:#ff5e8a;font-size:.92em;font-weight:800;letter-spacing:1px}
-.tc #locMapWrap{width:100%;height:178px;border-radius:12px;overflow:hidden;margin:0 0 8px;border:1px solid rgba(255,94,138,.18);box-shadow:0 2px 8px rgba(255,94,138,.1)}
+.tc #locMapWrap{width:100%;height:240px;border-radius:12px;overflow:hidden;margin:0 0 8px;border:1px solid rgba(255,94,138,.18);box-shadow:0 2px 8px rgba(255,94,138,.1)}
 .tc #locMap{width:100%;height:100%;background:#fdf6f8}
 .tc .loc-st{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.62em;color:#d98ba2;font-weight:600;letter-spacing:.2px;padding-top:6px;border-top:1px dashed rgba(255,94,138,.2)}
 .tc .loc-st b{color:#ff5e8a;font-weight:800}
@@ -732,7 +732,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .locmk.blue .mh{background:#5c9ce6}
 .locmk .mh .ah{width:100%;height:100%;object-fit:cover;display:block}
 .locmk .mh .ch{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2)}
-.locmk .lb{display:block;position:absolute;top:auto;bottom:-28px;left:50%;transform:translateX(-50%);font-size:11px;line-height:1.2;white-space:nowrap;background:rgba(255,255,255,.95);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15);z-index:5;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif}
+.locmk .lb{display:block;position:absolute;top:auto;bottom:-24px;left:50%;transform:translateX(-50%);width:max-content;font-size:11px;line-height:1.2;white-space:nowrap;background:rgba(255,255,255,.95);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15);z-index:5;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif}
 .locmk.blue .lb{color:#4a7fc4;border-color:rgba(92,156,230,.2)}
 .tc #viewAnniv{display:none;text-align:left;min-height:168px;flex-direction:column;justify-content:center;box-sizing:border-box}
 .tc.show-anniv #viewTimer{display:none}
@@ -1003,7 +1003,7 @@ function showLoc(){
     empty.style.display='none';
     wrap.style.display='block';
     if(!window.__locMap){
-        var map=L.map(document.getElementById('locMap'));
+        var map=L.map(document.getElementById('locMap'),{zoomSnap:0.25});
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
         LOC.forEach(function(p){
             var ini=esc((p.name||'?').charAt(0)),city=esc(p.addr||p.name);
@@ -1016,7 +1016,7 @@ function showLoc(){
         if(LOC.length===1){
             map.setView([LOC[0].lat,LOC[0].lng],6);
         }else if(distKm(LOC[0],LOC[1])>800){
-            map.setView([33.5,104.5],2);
+            map.setView([34,104],1.75);
         }else{
             map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[20,40],maxZoom:11});
         }
