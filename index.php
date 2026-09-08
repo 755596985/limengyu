@@ -1224,7 +1224,7 @@ function cancelEdit(cid, postId) {
     var ib = document.getElementById('cmt-input-bar-' + postId);
     if (ib) ib.style.display = '';
 }
-setInterval(function(){var el=document.getElementById('dc');if(el){var ld=new Date('<?php echo htmlspecialchars($ld); ?>'),df=Math.floor((Date.now()-ld)/86400000);if(el.textContent!=df){el.style.transform='scale(1.15)';el.textContent=df;setTimeout(function(){el.style.transform='scale(1)'},300)}}},60000);
+setInterval(function(){var el=document.getElementById('dc');if(el){var ld=new Date('<?php echo htmlspecialchars($ld); ?>T00:00:00'),df=Math.floor((Date.now()-ld)/86400000);if(el.textContent!=df){el.style.transform='scale(1.15)';el.textContent=df;setTimeout(function(){el.style.transform='scale(1)'},300)}}},60000);
 
 // 点赞
 (function(){
