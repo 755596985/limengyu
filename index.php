@@ -732,7 +732,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .locmk.blue .mh{background:#5c9ce6}
 .locmk .mh .ah{width:100%;height:100%;object-fit:cover;display:block}
 .locmk .mh .ch{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2)}
-.locmk .lb{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:10px;line-height:1;white-space:nowrap;background:rgba(255,255,255,.95);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15)}
+.locmk .lb{display:block;position:absolute;top:auto;bottom:-21px;left:50%;transform:translateX(-50%);font-size:10px;line-height:1;white-space:nowrap;background:rgba(255,255,255,.95);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15);z-index:5}
 .locmk.blue .lb{color:#4a7fc4;border-color:rgba(92,156,230,.2)}
 .tc #viewAnniv{display:none;text-align:left;min-height:168px;flex-direction:column;justify-content:center;box-sizing:border-box}
 .tc.show-anniv #viewTimer{display:none}
