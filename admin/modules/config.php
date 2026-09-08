@@ -13,6 +13,12 @@ if (($MOD_RUN ?? '') === 'handle') {
         $config['beian'] = trim($_POST['beian'] ?? '');
         $config['footer'] = trim($_POST['footer'] ?? '');
         $config['love_title'] = trim($_POST['love_title'] ?? '已经在一起');
+        $config['loc1_addr'] = trim($_POST['loc1_addr'] ?? '');
+        $config['loc1_lat'] = trim($_POST['loc1_lat'] ?? '');
+        $config['loc1_lng'] = trim($_POST['loc1_lng'] ?? '');
+        $config['loc2_addr'] = trim($_POST['loc2_addr'] ?? '');
+        $config['loc2_lat'] = trim($_POST['loc2_lat'] ?? '');
+        $config['loc2_lng'] = trim($_POST['loc2_lng'] ?? '');
         $config['show_comments'] = isset($_POST['show_comments']) ? 1 : 0;
         $config['show_album'] = isset($_POST['show_album']) ? 1 : 0;
         $config['show_places'] = isset($_POST['show_places']) ? 1 : 0;
@@ -72,6 +78,11 @@ if (($MOD_RUN ?? '') === 'render') {
 <div class="btn-group"><button type="submit" class="btn primary"><span class="lbl-ico"><?php echo m_ico("save", 15); ?></span> 保存</button></div><hr style="margin:16px 0;border-color:var(--sd)">
 <div class="card-title" style="margin-top:8px"><span class="lbl-ico"><?php echo m_ico("config", 15); ?></span> 功能开关</div>
 <div class="fg"><label><span class="lbl-ico"><?php echo m_ico("heart", 15); ?></span> 恋爱计时标题</label><input type="text" name="love_title" class="neo" value="<?php echo htmlspecialchars($config['love_title']??'已经在一起');?>" placeholder="已经在一起"></div>
+<div class="fg" style="margin-top:14px;border-top:1px dashed var(--sd);padding-top:10px"><label style="font-weight:800"><span class="lbl-ico"><?php echo m_ico("map", 15); ?></span> 两人位置共享</label><div style="font-size:.7em;color:var(--tl)">前台首页计时卡左上角「位置」按钮可查看两人所在地。经纬度可到 <a href="https://lbs.amap.com/tools/picker" target="_blank" rel="noopener">高德坐标拾取器</a> 点选后复制填入（先纬度后经度）；位置名留空则不显示该点。</div></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> <?php echo htmlspecialchars($config['name1'] ?? '我'); ?> 的位置名</label><input type="text" name="loc1_addr" class="neo" value="<?php echo htmlspecialchars($config['loc1_addr']??'');?>" placeholder="如：深圳南山"></div>
+<div class="fg" style="display:flex;gap:8px"><input type="text" name="loc1_lat" class="neo" value="<?php echo htmlspecialchars($config['loc1_lat']??'');?>" placeholder="<?php echo htmlspecialchars($config['name1'] ?? '我'); ?> 纬度，如 22.5402" style="flex:1"><input type="text" name="loc1_lng" class="neo" value="<?php echo htmlspecialchars($config['loc1_lng']??'');?>" placeholder="<?php echo htmlspecialchars($config['name1'] ?? '我'); ?> 经度，如 113.9330" style="flex:1"></div>
+<div class="fg"><label><span class="lbl-ico"><?php echo m_ico("user", 15); ?></span> <?php echo htmlspecialchars($config['name2'] ?? 'TA'); ?> 的位置名</label><input type="text" name="loc2_addr" class="neo" value="<?php echo htmlspecialchars($config['loc2_addr']??'');?>" placeholder="如：北京朝阳"></div>
+<div class="fg" style="display:flex;gap:8px"><input type="text" name="loc2_lat" class="neo" value="<?php echo htmlspecialchars($config['loc2_lat']??'');?>" placeholder="<?php echo htmlspecialchars($config['name2'] ?? 'TA'); ?> 纬度，如 39.9042" style="flex:1"><input type="text" name="loc2_lng" class="neo" value="<?php echo htmlspecialchars($config['loc2_lng']??'');?>" placeholder="<?php echo htmlspecialchars($config['name2'] ?? 'TA'); ?> 经度，如 116.4074" style="flex:1"></div>
 <div class="fg" style="display:flex;align-items:center;gap:10px"><label style="flex:1"><span class="lbl-ico"><?php echo m_ico("comment", 15); ?></span> 评论功能</label><label class="switch"><input type="checkbox" name="show_comments" <?php echo ($config['show_comments']??1)?'checked':''; ?>><span class="slider"></span></label></div>
 <div class="fg" style="display:flex;align-items:center;gap:10px"><label style="flex:1"><span class="lbl-ico"><?php echo m_ico("camera", 15); ?></span> 相册页面</label><label class="switch"><input type="checkbox" name="show_album" <?php echo ($config['show_album']??1)?'checked':''; ?>><span class="slider"></span></label></div>
 <div class="fg" style="display:flex;align-items:center;gap:10px"><label style="flex:1"><span class="lbl-ico"><?php echo m_ico("place", 15); ?></span> 足迹页面</label><label class="switch"><input type="checkbox" name="show_places" <?php echo ($config['show_places']??1)?'checked':''; ?>><span class="slider"></span></label></div>
