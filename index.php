@@ -514,7 +514,8 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title><?php echo htmlspecialchars($st); ?></title>
-<?php if ($pg === 'places' && ($C['show_places'] ?? 1)): ?>
+<?php $_need_leaflet = ($pg === 'places' && ($C['show_places'] ?? 1)) || ($pg === 'home' && (is_numeric(($C['loc1_lat'] ?? '')) || is_numeric(($C['loc2_lat'] ?? '')))); ?>
+<?php if ($_need_leaflet): ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <?php endif; ?>
