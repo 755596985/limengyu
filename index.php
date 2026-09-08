@@ -1000,6 +1000,7 @@ function showLoc(){
         stL=document.getElementById('locStL'),stR=document.getElementById('locStR');
     if(!LOC.length){empty.style.display='flex';wrap.style.display='none';st.style.display='none';dst.style.display='none';return;}
     empty.style.display='none';
+    wrap.style.display='block';
     if(!window.__locMap){
         var map=L.map(document.getElementById('locMap')).setView([LOC[0].lat,LOC[0].lng],LOC.length>1?4:6);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
@@ -1009,8 +1010,10 @@ function showLoc(){
         });
         if(LOC.length>1)map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[24,24],maxZoom:6});
         window.__locMap=map;
+    }else{
+        setTimeout(function(){window.__locMap.invalidateSize();},80);
     }
-    wrap.style.display='block';st.style.display='flex';dst.style.display='none';
+    st.style.display='flex';dst.style.display='none';
     var a=LOC[0],b=LOC[1];
     stL.textContent=a.name+(a.addr?(' · '+a.addr):'');
     stR.textContent=b?b.name+(b.addr?(' · '+b.addr):''):'未设置位置';
