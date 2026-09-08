@@ -728,10 +728,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .tc .loc-st{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.62em;color:#d98ba2;font-weight:600;letter-spacing:.2px;padding-top:6px;border-top:1px dashed rgba(255,94,138,.2)}
 .tc .loc-st b{color:#ff5e8a;font-weight:800}
 .tc .loc-dist{display:none;text-align:center;color:#e0728e;font-size:.68em;font-weight:700;letter-spacing:.5px;margin-bottom:8px}
-.locmk .dot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;display:block;box-shadow:0 1px 5px rgba(0,0,0,.35);box-sizing:border-box}
-.locmk.pink .dot{background:#ff5e8a}
-.locmk.blue .dot{background:#5c9ce6}
-.locmk .lb{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-size:10px;line-height:1;white-space:nowrap;background:rgba(255,255,255,.94);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15)}
+.locmk .mh{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.35);overflow:hidden;position:relative;background:#ff5e8a;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.locmk.blue .mh{background:#5c9ce6}
+.locmk .mh .ah{width:100%;height:100%;object-fit:cover;display:block}
+.locmk .mh .ch{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.locmk .lb{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:10px;line-height:1;white-space:nowrap;background:rgba(255,255,255,.95);padding:3px 7px;border-radius:8px;color:#e0728e;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);border:1px solid rgba(255,94,138,.15)}
 .locmk.blue .lb{color:#4a7fc4;border-color:rgba(92,156,230,.2)}
 .tc #viewAnniv{display:none;text-align:left;min-height:168px;flex-direction:column;justify-content:center;box-sizing:border-box}
 .tc.show-anniv #viewTimer{display:none}
@@ -968,10 +969,10 @@ unset($_mk);
 <script><?php
 $_loc_pts = [];
 if (is_numeric(($C['loc1_lat'] ?? '')) && is_numeric(($C['loc1_lng'] ?? ''))) {
-    $_loc_pts[] = ['lat'=>(float)$C['loc1_lat'], 'lng'=>(float)$C['loc1_lng'], 'name'=>(string)($C['name1'] ?? '我'), 'addr'=>(string)($C['loc1_addr'] ?? ''), 'c'=>'pink'];
+    $_loc_pts[] = ['lat'=>(float)$C['loc1_lat'], 'lng'=>(float)$C['loc1_lng'], 'name'=>(string)($C['name1'] ?? '我'), 'addr'=>(string)($C['loc1_addr'] ?? ''), 'avatar'=>(string)($C['avatar1'] ?? ''), 'c'=>'pink'];
 }
 if (is_numeric(($C['loc2_lat'] ?? '')) && is_numeric(($C['loc2_lng'] ?? ''))) {
-    $_loc_pts[] = ['lat'=>(float)$C['loc2_lat'], 'lng'=>(float)$C['loc2_lng'], 'name'=>(string)($C['name2'] ?? 'TA'), 'addr'=>(string)($C['loc2_addr'] ?? ''), 'c'=>'blue'];
+    $_loc_pts[] = ['lat'=>(float)$C['loc2_lat'], 'lng'=>(float)$C['loc2_lng'], 'name'=>(string)($C['name2'] ?? 'TA'), 'addr'=>(string)($C['loc2_addr'] ?? ''), 'avatar'=>(string)($C['avatar2'] ?? ''), 'c'=>'blue'];
 }
 ?>(function(){
 var card=document.getElementById('tcCard'),tab=document.getElementById('annivTab'),
@@ -1005,10 +1006,14 @@ function showLoc(){
         var map=L.map(document.getElementById('locMap')).setView([LOC[0].lat,LOC[0].lng],LOC.length>1?4:6);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
         LOC.forEach(function(p){
-            var ic=L.divIcon({className:'locmk '+p.c,html:'<span class="dot"></span><span class="lb">'+esc(p.name)+'</span>',iconSize:[14,14],iconAnchor:[7,7]});
-            L.marker([p.lat,p.lng],{icon:ic}).addTo(map).bindTooltip(esc(p.name)+(p.addr?(' · '+esc(p.addr)):''),{direction:'top',offset:[0,-10]});
+            var ini=esc((p.name||'?').charAt(0)),city=esc(p.addr||p.name);
+            var inner=p.avatar
+                ? '<img class="ah" src="'+esc(p.avatar)+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><span class="ch" style="display:none">'+ini+'</span>'
+                : '<span class="ch">'+ini+'</span>';
+            var ic=L.divIcon({className:'locmk '+p.c,html:'<div class="mh">'+inner+'</div><span class="lb">'+city+'</span>',iconSize:[34,34],iconAnchor:[17,17]});
+            L.marker([p.lat,p.lng],{icon:ic,title:p.name}).addTo(map);
         });
-        if(LOC.length>1)map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[24,24],maxZoom:6});
+        if(LOC.length>1)map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[20,20],maxZoom:9});
         window.__locMap=map;
     }else{
         setTimeout(function(){window.__locMap.invalidateSize();},80);
