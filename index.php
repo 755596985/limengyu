@@ -1004,7 +1004,7 @@ function showLoc(){
     wrap.style.display='block';
     if(!window.__locMap){
         var map=L.map(document.getElementById('locMap'),{zoomSnap:0.25});
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
+        L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',{subdomains:['1','2','3','4'],maxZoom:18,attribution:''}).addTo(map);
         LOC.forEach(function(p){
             var ini=esc((p.name||'?').charAt(0)),city=esc(p.addr||p.name);
             var inner=p.avatar
@@ -1081,7 +1081,7 @@ function showLoc(){
     var el = document.getElementById('footMap');
     if (typeof L === 'undefined' || !el) { if (el) el.innerHTML = '<div style="padding:60px 10px;text-align:center;color:#999;font-size:13px">地图组件未能加载（当前网络无法访问地图 CDN）</div>'; return; }
     var map = L.map(el).setView([spots[0].lat, spots[0].lng], 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap'}).addTo(map);
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {subdomains:['1','2','3','4'],maxZoom:18,attribution:''}).addTo(map);
     var fit = [];
     spots.forEach(function(s){
         var mk = L.marker([s.lat, s.lng]).addTo(map);
