@@ -333,6 +333,8 @@ function get_config(): array {
             'show_comments' => 1, 'show_album' => 1, 'show_places' => 1,
             'show_todos' => 1, 'show_user_posts' => 1,
             'footer' => '',
+            'loc1_lat' => '', 'loc1_lng' => '', 'loc1_addr' => '',
+            'loc2_lat' => '', 'loc2_lng' => '', 'loc2_addr' => '',
         ];
     }
     return $row;
@@ -367,7 +369,13 @@ function save_config(array $c): void {
     ensure_config_column('footer');
     ensure_config_column('reward_wx_img');
     ensure_config_column('reward_alipay_img');
-    $st = db()->prepare('UPDATE cp_config SET name1=?, name2=?, love_date=?, site_title=?, beian=?, avatar1=?, avatar2=?, background_image=?, love_title=?, show_comments=?, show_album=?, show_places=?, show_todos=?, show_user_posts=?, footer=?, reward_wx_img=?, reward_alipay_img=? WHERE id=1');
+    ensure_config_column('loc1_lat');
+    ensure_config_column('loc1_lng');
+    ensure_config_column('loc1_addr');
+    ensure_config_column('loc2_lat');
+    ensure_config_column('loc2_lng');
+    ensure_config_column('loc2_addr');
+    $st = db()->prepare('UPDATE cp_config SET name1=?, name2=?, love_date=?, site_title=?, beian=?, avatar1=?, avatar2=?, background_image=?, love_title=?, show_comments=?, show_album=?, show_places=?, show_todos=?, show_user_posts=?, footer=?, reward_wx_img=?, reward_alipay_img=?, loc1_lat=?, loc1_lng=?, loc1_addr=?, loc2_lat=?, loc2_lng=?, loc2_addr=? WHERE id=1');
     $st->execute([
         $c['name1'] ?? '男神', $c['name2'] ?? '女神', $c['love_date'] ?? '2024-01-01',
         $c['site_title'] ?? '', $c['beian'] ?? '',
@@ -377,6 +385,8 @@ function save_config(array $c): void {
         $c['show_todos'] ?? 1, $c['show_user_posts'] ?? 1,
         $c['footer'] ?? '',
         $c['reward_wx_img'] ?? '', $c['reward_alipay_img'] ?? '',
+        $c['loc1_lat'] ?? '', $c['loc1_lng'] ?? '', $c['loc1_addr'] ?? '',
+        $c['loc2_lat'] ?? '', $c['loc2_lng'] ?? '', $c['loc2_addr'] ?? '',
     ]);
 }
 
