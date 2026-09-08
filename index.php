@@ -1016,7 +1016,7 @@ function showLoc(){
         if(LOC.length===1){
             map.setView([LOC[0].lat,LOC[0].lng],6);
         }else if(distKm(LOC[0],LOC[1])>800){
-            map.setView([34,104],1.75);
+            map.setView([34,104],3.25);
         }else{
             map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[20,40],maxZoom:11});
         }
