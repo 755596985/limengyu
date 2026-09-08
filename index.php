@@ -1003,7 +1003,7 @@ function showLoc(){
     empty.style.display='none';
     wrap.style.display='block';
     if(!window.__locMap){
-        var map=L.map(document.getElementById('locMap')).setView([LOC[0].lat,LOC[0].lng],LOC.length>1?4:6);
+        var map=L.map(document.getElementById('locMap'));
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
         LOC.forEach(function(p){
             var ini=esc((p.name||'?').charAt(0)),city=esc(p.addr||p.name);
@@ -1013,7 +1013,13 @@ function showLoc(){
             var ic=L.divIcon({className:'locmk '+p.c,html:'<div class="mh">'+inner+'</div><span class="lb">'+city+'</span>',iconSize:[34,34],iconAnchor:[17,17]});
             L.marker([p.lat,p.lng],{icon:ic,title:p.name}).addTo(map);
         });
-        if(LOC.length>1)map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[20,20],maxZoom:9});
+        if(LOC.length===1){
+            map.setView([LOC[0].lat,LOC[0].lng],6);
+        }else if(distKm(LOC[0],LOC[1])>800){
+            map.setView([33.5,104.5],2);
+        }else{
+            map.fitBounds(LOC.map(function(p){return [p.lat,p.lng];}),{padding:[20,40],maxZoom:11});
+        }
         window.__locMap=map;
     }else{
         setTimeout(function(){window.__locMap.invalidateSize();},80);
