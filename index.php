@@ -514,7 +514,7 @@ function renderPostCard($po, $CM, $n1, $n2, $a1, $a2, $me, $likedComments, $coll
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title><?php echo htmlspecialchars($st); ?></title>
-<?php $_need_leaflet = ($pg === 'places' && ($C['show_places'] ?? 1)) || ($pg === 'home' && (is_numeric(($C['loc1_lat'] ?? '')) || is_numeric(($C['loc2_lat'] ?? '')))); ?>
+<?php $_need_leaflet = ($pg === 'places' && ($C['show_places'] ?? 1)) || ($pg === 'home' && ($C['show_loc'] ?? 1) && (is_numeric(($C['loc1_lat'] ?? '')) || is_numeric(($C['loc2_lat'] ?? '')))); ?>
 <?php if ($_need_leaflet): ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -910,9 +910,10 @@ function switchReward(k){
 <?php if ($commentErr): ?><div class="cmt-msg err"><?php echo m_ico('alert',15); ?> <?php echo htmlspecialchars($commentErr); ?></div><?php endif; ?>
 
 <?php if ($pg === 'home'): ?>
+<?php $_showAnniv = (bool)($C['show_anniv'] ?? 1); $_showLoc = (bool)($C['show_loc'] ?? 1); ?>
 <div class="nc tc" id="tcCard">
-<button type="button" class="anniv-tab" id="annivTab"><span id="annivTabIco">♡</span><span id="annivTabTx">纪念日</span></button>
-<button type="button" class="anniv-tab lc" id="locTab"><?php echo m_ico('place',12); ?><span id="locTabTx">位置</span></button>
+<?php if ($_showAnniv): ?><button type="button" class="anniv-tab" id="annivTab"><span id="annivTabIco">♡</span><span id="annivTabTx">纪念日</span></button><?php endif; ?>
+<?php if ($_showLoc): ?><button type="button" class="anniv-tab lc" id="locTab"><?php echo m_ico('place',12); ?><span id="locTabTx">位置</span></button><?php endif; ?>
 <div id="viewTimer">
 <div class="tl"><?php echo htmlspecialchars($C['love_title'] ?? '已经在一起'); ?></div>
 <div class="tn" id="dc"><?php echo $ds; ?></div>
@@ -945,6 +946,7 @@ foreach ($_miles as $_i => &$_mk) {
 }
 unset($_mk);
 ?>
+<?php if ($_showAnniv): ?>
 <div id="viewAnniv">
 <div class="av-tt"><?php echo m_ico('heart',12); ?><span>纪念日时间表</span></div>
 <div class="acm-scroll" id="acmScroll">
@@ -959,12 +961,15 @@ unset($_mk);
 </div>
 <div class="av-foot"><span>已走过 <?php echo $_nxIdx === null ? count($_miles) : $_nxIdx; ?> 个纪念日</span><?php if ($_nxIdx !== null): ?><span>下一站 · <b><?php echo htmlspecialchars($_miles[$_nxIdx]['label']); ?></b> 还有 <?php echo max(0,$_miles[$_nxIdx]['left']); ?> 天</span><?php endif; ?></div>
 </div>
+<?php endif; ?>
+<?php if ($_showLoc): ?>
 <div id="viewLoc">
 <div class="loc-empty" id="locEmpty" style="display:none"><div class="lb">两人位置</div><div>后台还没有设置两人的位置</div></div>
 <div id="locMapWrap" style="display:none"><div id="locMap"></div></div>
 <div class="loc-dist" id="locDist"></div>
 <div class="loc-st" id="locSt" style="display:none"><span id="locStL"></span><span id="locStR"></span></div>
 </div>
+<?php endif; ?>
 </div>
 <script><?php
 $_loc_pts = [];
@@ -987,14 +992,14 @@ function setMode(m){
     var a=m==='anniv',l=m==='loc';
     card.classList.toggle('show-anniv',a);
     card.classList.toggle('show-loc',l);
-    ico.textContent=a?'♥':'♡';
-    tx.textContent=a?'返回计时':'纪念日';
-    ltx.textContent=l?'返回计时':'位置';
+    if(ico)ico.textContent=a?'♥':'♡';
+    if(tx)tx.textContent=a?'返回计时':'纪念日';
+    if(ltx)ltx.textContent=l?'返回计时':'位置';
     if(a)setTimeout(center,40);
     if(l)setTimeout(showLoc,80);
 }
-tab.addEventListener('click',function(){setMode(card.classList.contains('show-anniv')?'timer':'anniv');});
-ltab.addEventListener('click',function(){setMode(card.classList.contains('show-loc')?'timer':'loc');});
+if(tab)tab.addEventListener('click',function(){setMode(card.classList.contains('show-anniv')?'timer':'anniv');});
+if(ltab)ltab.addEventListener('click',function(){setMode(card.classList.contains('show-loc')?'timer':'loc');});
 function showLoc(){
     var empty=document.getElementById('locEmpty'),wrap=document.getElementById('locMapWrap'),
         st=document.getElementById('locSt'),dst=document.getElementById('locDist'),
