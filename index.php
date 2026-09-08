@@ -723,7 +723,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .tc.show-loc #viewLoc{display:flex}
 .tc .loc-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#d98ba2;font-size:.8em;min-height:168px}
 .tc .loc-empty .lb{color:#ff5e8a;font-size:.92em;font-weight:800;letter-spacing:1px}
-.tc #locMapWrap{width:100%;height:240px;border-radius:12px;overflow:hidden;margin:0 0 8px;border:1px solid rgba(255,94,138,.18);box-shadow:0 2px 8px rgba(255,94,138,.1)}
+.tc #locMapWrap{width:100%;height:240px;border-radius:12px;overflow:hidden;margin:0 0 8px;border:1px solid rgba(255,94,138,.18);box-shadow:0 2px 8px rgba(255,94,138,.1);position:relative;z-index:1}
 .tc #locMap{width:100%;height:100%;background:#fdf6f8}
 .tc .loc-st{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.62em;color:#d98ba2;font-weight:600;letter-spacing:.2px;padding-top:6px;border-top:1px dashed rgba(255,94,138,.2)}
 .tc .loc-st b{color:#ff5e8a;font-weight:800}
@@ -1024,11 +1024,13 @@ function showLoc(){
     }else{
         setTimeout(function(){window.__locMap.invalidateSize();},80);
     }
-    st.style.display='flex';dst.style.display='none';
+    st.style.display='flex';
     var a=LOC[0],b=LOC[1];
     stL.textContent=a.name+(a.addr?(' · '+a.addr):'');
     stR.textContent=b?b.name+(b.addr?(' · '+b.addr):''):'未设置位置';
-    if(b){dst.textContent='两地相距约 '+distKm(a,b)+' 公里';dst.style.display='block';}
+    if(b){dst.textContent='两地相距约 '+distKm(a,b)+' 公里';}
+    else{dst.textContent=a.addr?('我在 '+a.addr):(a.name?('我的位置 · '+a.name):'我的位置');}
+    dst.style.display='block';
     setTimeout(function(){if(window.__locMap)window.__locMap.invalidateSize();},100);
 }
 })();</script>
