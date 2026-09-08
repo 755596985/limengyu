@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS cp_config (
   show_places TINYINT NOT NULL DEFAULT 1,
   show_todos TINYINT NOT NULL DEFAULT 1,
   show_user_posts TINYINT NOT NULL DEFAULT 1,
+  show_anniv TINYINT NOT NULL DEFAULT 1,
+  show_loc TINYINT NOT NULL DEFAULT 1,
   footer TEXT,
   ai_base_url TEXT,
   ai_api_key TEXT,
